@@ -104,7 +104,7 @@
                     android:id="@+id/btnDislike"
                     android:layout_width="32dp"
                     android:layout_height="32dp"
-                    android:src="@drawable/ic_thumb_down"
+                    android:src="@drawable/like"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:tint="#AAAAAA"
                     android:contentDescription="No me gusta" />

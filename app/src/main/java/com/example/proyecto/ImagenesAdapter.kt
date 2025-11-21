@@ -20,7 +20,7 @@ class ImagenesAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImagenViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_imagen_seleccionada, parent, false)
+            .inflate(R.layout.imagenes, parent, false)
         return ImagenViewHolder(view)
     }
 

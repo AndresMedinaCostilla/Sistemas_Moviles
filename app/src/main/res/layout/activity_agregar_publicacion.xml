@@ -27,7 +27,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Cancelar"
             android:src="@drawable/left"
-            android:tint="#FFFFFF" />
+            app:tint="#FFFFFF" />
 
         <View
             android:layout_width="0dp"
@@ -156,9 +156,9 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="Abrir galería"
         android:src="@drawable/galeria"
-        android:tint="#8EE5E6"
         app:layout_constraintBottom_toTopOf="@id/btnPublicar"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:tint="#8EE5E6" />
 
     <Button
         android:id="@+id/btnPublicar"
