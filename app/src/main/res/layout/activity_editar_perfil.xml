@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:orientation="vertical"
+    android:gravity="center"
+    tools:context=".MainActivity">
+
+    <!-- Círculo para foto de perfil -->
+
+    <!-- Texto principal -->
+
+    <ImageView
+        android:id="@+id/imgPerfil"
+        android:layout_width="72dp"
+        android:layout_height="65dp"
+        android:layout_marginBottom="32dp"
+        android:background="#8EE5E6"
+        android:contentDescription="Foto de perfil"
+        android:scaleType="centerCrop"
+        android:src="@mipmap/user_foreground" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Editar perfil"
+        android:textColor="#FFFFFF"
+        android:textAlignment="center"
+        android:textSize="25sp"
+        android:layout_marginBottom="32dp" />
+
+    <EditText
+        android:id="@+id/txtNombre"
+        android:layout_width="280dp"
+        android:layout_height="50dp"
+        android:hint="Nombre"
+        android:backgroundTint="#8EE5E6"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#A9A9A9"
+        android:inputType="text"
+        android:drawablePadding="10dp"
+        android:paddingStart="16dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/edittext_style" />
+    <EditText
+        android:id="@+id/txtapellidoPaterno"
+        android:layout_width="280dp"
+        android:layout_height="50dp"
+        android:hint="Apellido paterno"
+        android:backgroundTint="#8EE5E6"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#A9A9A9"
+        android:inputType="text"
+        android:drawablePadding="10dp"
+        android:paddingStart="16dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/edittext_style" />
+
+    <EditText
+        android:id="@+id/txtapellidoMaterno"
+        android:layout_width="280dp"
+        android:layout_height="50dp"
+        android:hint="Apellido materno"
+        android:backgroundTint="#8EE5E6"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#A9A9A9"
+        android:inputType="text"
+        android:drawablePadding="10dp"
+        android:paddingStart="16dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/edittext_style" />
+<!--    <EditText-->
+<!--        android:id="@+id/txtCorreo"-->
+<!--        android:layout_width="280dp"-->
+<!--        android:layout_height="50dp"-->
+<!--        android:hint="Correo electrónico"-->
+<!--        android:backgroundTint="#8EE5E6"-->
+<!--        android:textColor="#FFFFFF"-->
+<!--        android:textColorHint="#A9A9A9"-->
+<!--        android:inputType="textEmailAddress"-->
+<!--        android:drawablePadding="10dp"-->
+<!--        android:paddingStart="16dp"-->
+<!--        android:layout_marginBottom="20dp"-->
+<!--        android:background="@drawable/edittext_style" />-->
+
+    <!-- Campo de contraseña -->
+    <EditText
+        android:id="@+id/txtContrasena"
+        android:layout_width="280dp"
+        android:layout_height="50dp"
+        android:hint="Contraseña"
+        android:backgroundTint="#8EE5E6"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#A9A9A9"
+        android:inputType="textPassword"
+        android:drawablePadding="10dp"
+        android:paddingStart="16dp"
+        android:background="@drawable/edittext_style"
+        android:layout_marginBottom="24dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tu contraseña debe de tener:"
+        android:textColor="#FFFFFF"
+        android:textAlignment="textEnd"
+        android:textSize="15sp"
+        android:layout_marginBottom="2dp" />
+
+    <TextView
+        android:layout_width="199dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="2dp"
+        android:text="* Mínimo 10 caracteres"
+        android:textAlignment="center"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:text="* Mínimo una letra máyuscula"
+        android:textAlignment="center"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="2dp"
+        android:text="* Mínimo una letra minuscula"
+        android:textAlignment="center"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp" />
+
+    <!-- Campo de correo -->
+    <TextView
+        android:layout_width="199dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="15dp"
+        android:text="* Mínimo una número"
+        android:textAlignment="center"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp" />
+
+
+    <EditText
+        android:id="@+id/txtTelefono"
+        android:layout_width="280dp"
+        android:layout_height="50dp"
+        android:hint="Número de teléfono"
+        android:backgroundTint="#8EE5E6"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#A9A9A9"
+        android:inputType="phone"
+        android:imeOptions="actionNext"
+        android:maxLines="1"
+        android:drawablePadding="10dp"
+        android:paddingStart="16dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/edittext_style" />
+
+<!--    <EditText-->
+<!--        android:id="@+id/txtUsuario"-->
+<!--        android:layout_width="280dp"-->
+<!--        android:layout_height="50dp"-->
+<!--        android:hint="Usuario"-->
+<!--        android:backgroundTint="#8EE5E6"-->
+<!--        android:textColor="#FFFFFF"-->
+<!--        android:textColorHint="#A9A9A9"-->
+<!--        android:inputType="text"-->
+<!--        android:drawablePadding="10dp"-->
+<!--        android:paddingStart="16dp"-->
+<!--        android:layout_marginBottom="20dp"-->
+<!--        android:background="@drawable/edittext_style" />-->
+
+
+    <!-- Botón de iniciar sesión -->
+
+    <!-- Enlace a registro -->
+    <Button
+        android:id="@+id/btnRegistrarse"
+        android:layout_width="200dp"
+        android:layout_height="48dp"
+        android:layout_marginBottom="2dp"
+        android:background="@drawable/button_rounded"
+        android:backgroundTint="#8EE5E6"
+        android:text="Guardar cambios"
+        android:textColor="#000000" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Regresar "
+        android:textColor="#FFFFFF"
+        android:textSize="14sp" />
+
+
+</LinearLayout>

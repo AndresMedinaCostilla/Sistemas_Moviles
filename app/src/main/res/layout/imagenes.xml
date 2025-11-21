@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="100dp"
+    android:layout_height="100dp"
+    android:layout_margin="4dp"
+    android:orientation="vertical"
+    android:background="#2A2A2A"
+    android:padding="4dp">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/ivImagenSeleccionada"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:background="#444444" />
+
+        <!-- Botón para eliminar la imagen -->
+        <ImageButton
+            android:id="@+id/btnEliminarImagen"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="0dp"
+            android:layout_marginEnd="0dp"
+            android:contentDescription="Eliminar imagen"
+            android:padding="4dp"
+            android:src="@drawable/close" />
+
+    </RelativeLayout>
+
+</LinearLayout>

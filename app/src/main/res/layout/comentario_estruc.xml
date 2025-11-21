@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardBackgroundColor="#000000"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#000000"
+        android:padding="12dp">
+
+        <!-- Header del comentario -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#000000">
+
+            <ImageView
+                android:id="@+id/ivUserAvatar"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/user"
+                android:scaleType="centerCrop"
+                android:background="#8EE5E6"
+                android:padding="8dp"
+                android:contentDescription="Avatar del usuario"
+                app:shapeAppearanceOverlay="@style/CircleImageView" />
+
+            <TextView
+                android:id="@+id/tvUserName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="Nombre Usuario"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvTimeAgo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2h"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- Contenido del comentario -->
+        <TextView
+            android:id="@+id/tvCommentText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Este es un comentario de ejemplo que puede tener varias líneas de texto."
+            android:textColor="#E0E0E0"
+            android:textSize="14sp"
+            android:lineSpacingExtra="4dp" />
+
+        <!-- Acciones del comentario -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical">
+
+            <!-- Like/Dislike -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageButton
+                    android:id="@+id/btnLike"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@drawable/like"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:tint="#AAAAAA"
+                    android:contentDescription="Me gusta" />
+
+                <TextView
+                    android:id="@+id/tvLikeCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="12"
+                    android:textColor="#AAAAAA"
+                    android:textSize="12sp"
+                    android:layout_marginEnd="8dp" />
+
+                <ImageButton
+                    android:id="@+id/btnDislike"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@drawable/ic_thumb_down"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:tint="#AAAAAA"
+                    android:contentDescription="No me gusta" />
+
+                <TextView
+                    android:id="@+id/tvDislikeCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="2"
+                    android:textColor="#AAAAAA"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+            <!-- Espacio flexible -->
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- Botón responder -->
+            <Button
+                android:id="@+id/btnReply"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="Responder"
+                android:textColor="#8EE5E6"
+                android:textSize="12sp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:paddingHorizontal="12dp" />
+
+        </LinearLayout>
+
+        <!-- Sección de respuestas -->
+        <LinearLayout
+            android:id="@+id/layoutReplies"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp"
+            android:visibility="gone">
+
+            <!-- Línea divisoria -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#333333"
+                android:layout_marginVertical="8dp" />
+
+            <!-- RecyclerView para respuestas -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerReplies"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <!-- Botón para ver más respuestas -->
+            <Button
+                android:id="@+id/btnViewReplies"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ver 5 respuestas"
+                android:textColor="#8EE5E6"
+                android:textSize="12sp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_gravity="start" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
