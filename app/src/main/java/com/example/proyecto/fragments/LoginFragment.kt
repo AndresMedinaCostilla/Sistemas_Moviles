@@ -4,10 +4,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView // Necesario para txtRegistro
 import androidx.fragment.app.Fragment
 import com.example.proyecto.R
 import androidx.navigation.fragment.findNavController
-import android.widget.TextView
 
 class LoginFragment : Fragment(){
 
@@ -15,20 +15,27 @@ class LoginFragment : Fragment(){
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-
         return inflater.inflate(R.layout.activity_login, container, false)
     }
 
+    // El código para la lógica y la navegación va aquí
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 1. Encontrar el TextView por su ID
+        // 1. Encontrar el TextView por su ID (txtRegistro)
         val registroTextView = view.findViewById<TextView>(R.id.txtRegistro)
 
-        // 2. Asignar el listener de clic
+        // 2. Asignar el listener de clic para ir a RegistroFragment
         registroTextView.setOnClickListener {
-            // 3. Navegar usando el ID de la acción definida en nav_graph.xml
+            // Usa el ID de la acción definida en nav_graph.xml
             findNavController().navigate(R.id.action_loginFragment_to_registerFragment)
         }
+
+        // 3. Implementar la navegación para el botón Iniciar Sesión (a HomeFragment)
+        // val loginButton = view.findViewById<Button>(R.id.btnIniciarSesion)
+        // loginButton.setOnClickListener {
+        //     // Simula un login exitoso y navega a HomeFragment
+        //     findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
+        // }
     }
 }

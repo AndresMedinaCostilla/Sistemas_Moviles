@@ -6,8 +6,7 @@
     android:layout_height="match_parent"
     android:background="#000000"
     android:orientation="vertical"
-    android:gravity="center"
-    tools:context=".MainActivity">
+    android:gravity="center">
 
     <!-- Círculo para foto de perfil -->
 

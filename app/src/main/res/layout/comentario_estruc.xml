@@ -32,8 +32,7 @@
                 android:scaleType="centerCrop"
                 android:background="#8EE5E6"
                 android:padding="8dp"
-                android:contentDescription="Avatar del usuario"
-                app:shapeAppearanceOverlay="@style/CircleImageView" />
+                android:contentDescription="Avatar del usuario" />
 
             <TextView
                 android:id="@+id/tvUserName"
