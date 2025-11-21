@@ -25,17 +25,18 @@ class LoginFragment : Fragment(){
         // 1. Encontrar el TextView por su ID (txtRegistro)
         val registroTextView = view.findViewById<TextView>(R.id.txtRegistro)
 
+        val HomeTextView = view.findViewById<TextView>(R.id.btnIniciarSesion)
+
         // 2. Asignar el listener de clic para ir a RegistroFragment
         registroTextView.setOnClickListener {
             // Usa el ID de la acción definida en nav_graph.xml
             findNavController().navigate(R.id.action_loginFragment_to_registerFragment)
         }
 
-        // 3. Implementar la navegación para el botón Iniciar Sesión (a HomeFragment)
-        // val loginButton = view.findViewById<Button>(R.id.btnIniciarSesion)
-        // loginButton.setOnClickListener {
-        //     // Simula un login exitoso y navega a HomeFragment
-        //     findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
-        // }
+        HomeTextView.setOnClickListener {
+            // Usa el ID de la acción definida en nav_graph.xml
+            findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
+        }
+
     }
 }
