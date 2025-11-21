@@ -1,94 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000"
-    android:orientation="vertical"
-    android:gravity="center">
+    android:fillViewport="true">
 
-    <!-- Círculo para foto de perfil -->
-    <ImageView
-        android:id="@+id/imgPerfil"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:layout_marginBottom="32dp"
-        android:scaleType="centerCrop"
-        android:src="@mipmap/user_foreground"
-        android:background="#8EE5E6"
-        android:contentDescription="Foto de perfil" />
-
-    <!-- Texto principal -->
-    <TextView
-        android:layout_width="wrap_content"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Inicia sesión con tu cuenta\npara continuar"
-        android:textColor="#FFFFFF"
-        android:textAlignment="center"
-        android:textSize="16sp"
-        android:layout_marginBottom="32dp" />
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="32dp"
+        android:paddingBottom="32dp">
 
-    <!-- Campo de correo -->
-    <EditText
-        android:id="@+id/txtCorreo"
-        android:layout_width="280dp"
-        android:layout_height="50dp"
-        android:hint="Correo electrónico"
-        android:backgroundTint="#8EE5E6"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#A9A9A9"
-        android:inputType="textEmailAddress"
-        android:drawablePadding="10dp"
-        android:paddingStart="16dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/edittext_style" />
+        <!-- Texto principal -->
+            <TextView
+                android:id="@+id/txtTitulo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="100dp"
+                android:text="Inicia sesión con tu cuenta para continuar"
+                android:textColor="#FFFFFF"
+                android:textAlignment="center"
+                android:textSize="20sp"
+                android:layout_marginBottom="40dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Campo de contraseña -->
-    <EditText
-        android:id="@+id/txtContrasena"
-        android:layout_width="280dp"
-        android:layout_height="50dp"
-        android:hint="Contraseña"
-        android:backgroundTint="#8EE5E6"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#A9A9A9"
-        android:inputType="textPassword"
-        android:drawablePadding="10dp"
-        android:paddingStart="16dp"
-        android:background="@drawable/edittext_style"
-        android:layout_marginBottom="24dp" />
+            <!-- Campo de correo -->
+            <EditText
+                android:id="@+id/txtCorreo"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_marginTop="32dp"
+                android:hint="Correo electrónico"
+                android:backgroundTint="#8EE5E6"
+                android:textColor="#FFFFFF"
+                android:maxWidth="400dp"
+                android:textColorHint="#A9A9A9"
+                android:inputType="textEmailAddress"
+                android:drawablePadding="10dp"
+                android:paddingStart="16dp"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/txtTitulo"
+                app:layout_constraintWidth_percent="0.85"
+                android:background="@drawable/edittext_style" />
 
-    <!-- Botón de iniciar sesión -->
-    <Button
-        android:id="@+id/btnIniciarSesion"
-        android:layout_width="200dp"
-        android:layout_height="48dp"
-        android:text="Iniciar sesión"
-        android:textColor="#000000"
-        android:backgroundTint="#8EE5E6"
-        android:background="@drawable/button_rounded"
-        android:layout_marginBottom="16dp" />
+            <!-- Campo de contraseña -->
+            <EditText
+                android:id="@+id/txtContrasena"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_marginTop="32dp"
+                android:hint="Contraseña"
+                android:backgroundTint="#8EE5E6"
+                android:textColor="#FFFFFF"
+                android:maxWidth="400dp"
+                android:textColorHint="#A9A9A9"
+                android:inputType="textPassword"
+                android:drawablePadding="10dp"
+                android:paddingStart="16dp"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/txtCorreo"
+                app:layout_constraintWidth_percent="0.85"
+                android:background="@drawable/edittext_style" />
 
-    <!-- Enlace a registro -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="¿No tienes cuenta? "
-        android:textColor="#FFFFFF"
-        android:textSize="14sp"
-        android:layout_marginTop="16dp" />
+            <!-- Botón de iniciar sesión -->
+            <Button
+                android:id="@+id/btnIniciarSesion"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_marginTop="24dp"
+                android:maxWidth="300dp"
+                android:text="Iniciar sesión"
+                android:textColor="#000000"
+                android:backgroundTint="#8EE5E6"
+                android:background="@drawable/button_rounded"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/txtContrasena"
+                app:layout_constraintWidth_percent="0.7" />
 
-    <TextView
-        android:id="@+id/txtRegistro"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Regístrate aquí"
-        android:textColor="#8EE5E6"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:clickable="true"
-        android:focusable="true"
-        android:layout_marginTop="4dp" />
+            <!-- Enlace a registro -->
+        <TextView
+            android:id="@+id/txtNotienescuenta"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"  android:layout_marginBottom="24dp"
+            android:text="¿No tienes cuenta? "
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            app:layout_constraintTop_toBottomOf="@id/btnIniciarSesion"
+            app:layout_constraintEnd_toStartOf="@id/txtRegistro"
+            app:layout_constraintHorizontal_chainStyle="packed"
+            app:layout_constraintStart_toStartOf="parent" />
+        <TextView
+            android:id="@+id/txtRegistro"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:layout_marginBottom="24dp"
+            android:text="Regístrate aquí"
+            android:textColor="#8EE5E6"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            app:layout_constraintTop_toBottomOf="@id/btnIniciarSesion"
+            app:layout_constraintStart_toEndOf="@id/txtNotienescuenta"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-</LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</ScrollView>

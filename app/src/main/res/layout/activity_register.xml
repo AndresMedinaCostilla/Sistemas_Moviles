@@ -1,203 +1,309 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000"
-    android:orientation="vertical"
-    android:gravity="center">
+    android:fillViewport="true">
 
-    <!-- Círculo para foto de perfil -->
-
-    <!-- Texto principal -->
-
-    <ImageView
-        android:id="@+id/imgPerfil"
-        android:layout_width="72dp"
-        android:layout_height="65dp"
-        android:layout_marginBottom="32dp"
-        android:background="#8EE5E6"
-        android:contentDescription="Foto de perfil"
-        android:scaleType="centerCrop"
-        android:src="@mipmap/user_foreground" />
-
-    <TextView
-        android:layout_width="wrap_content"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Crear una cuenta"
-        android:textColor="#FFFFFF"
-        android:textAlignment="center"
-        android:textSize="25sp"
-        android:layout_marginBottom="32dp" />
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="32dp"
+        android:paddingBottom="32dp">
 
-    <EditText
-        android:id="@+id/txtNombre"
-        android:layout_width="280dp"
-        android:layout_height="50dp"
-        android:hint="Nombre"
-        android:backgroundTint="#8EE5E6"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#A9A9A9"
-        android:inputType="text"
-        android:drawablePadding="10dp"
-        android:paddingStart="16dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/edittext_style" />
-    <EditText
-        android:id="@+id/txtapellidoPaterno"
-        android:layout_width="280dp"
-        android:layout_height="50dp"
-        android:hint="Apellido paterno"
-        android:backgroundTint="#8EE5E6"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#A9A9A9"
-        android:inputType="text"
-        android:drawablePadding="10dp"
-        android:paddingStart="16dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/edittext_style" />
+        <!-- Foto de perfil -->
+        <ImageView
+            android:id="@+id/imgPerfil"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
+            android:background="#8EE5E6"
+            android:contentDescription="Foto de perfil"
+            android:scaleType="centerCrop"
+            android:src="@mipmap/user_foreground"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-    <EditText
-        android:id="@+id/txtapellidoMaterno"
-        android:layout_width="280dp"
-        android:layout_height="50dp"
-        android:hint="Apellido materno"
-        android:backgroundTint="#8EE5E6"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#A9A9A9"
-        android:inputType="text"
-        android:drawablePadding="10dp"
-        android:paddingStart="16dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/edittext_style" />
-    <EditText
-        android:id="@+id/txtCorreo"
-        android:layout_width="280dp"
-        android:layout_height="50dp"
-        android:hint="Correo electrónico"
-        android:backgroundTint="#8EE5E6"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#A9A9A9"
-        android:inputType="textEmailAddress"
-        android:drawablePadding="10dp"
-        android:paddingStart="16dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/edittext_style" />
+        <!-- Título -->
+        <TextView
+            android:id="@+id/txtTitulo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Crear una cuenta"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textSize="25sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/imgPerfil" />
 
-    <!-- Campo de contraseña -->
-    <EditText
-        android:id="@+id/txtContrasena"
-        android:layout_width="280dp"
-        android:layout_height="50dp"
-        android:hint="Contraseña"
-        android:backgroundTint="#8EE5E6"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#A9A9A9"
-        android:inputType="textPassword"
-        android:drawablePadding="10dp"
-        android:paddingStart="16dp"
-        android:background="@drawable/edittext_style"
-        android:layout_marginBottom="24dp" />
+        <!-- Nombre -->
+        <EditText
+            android:id="@+id/txtNombre"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="32dp"
+            android:background="@drawable/edittext_style"
+            android:backgroundTint="#8EE5E6"
+            android:drawablePadding="10dp"
+            android:hint="Nombre"
+            android:inputType="text"
+            android:maxWidth="400dp"
+            android:paddingStart="16dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#A9A9A9"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtTitulo"
+            app:layout_constraintWidth_percent="0.85" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Tu contraseña debe de tener:"
-        android:textColor="#FFFFFF"
-        android:textAlignment="textEnd"
-        android:textSize="15sp"
-        android:layout_marginBottom="2dp" />
+        <!-- Apellido Paterno -->
+        <EditText
+            android:id="@+id/txtapellidoPaterno"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edittext_style"
+            android:backgroundTint="#8EE5E6"
+            android:drawablePadding="10dp"
+            android:hint="Apellido paterno"
+            android:inputType="text"
+            android:maxWidth="400dp"
+            android:paddingStart="16dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#A9A9A9"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtNombre"
+            app:layout_constraintWidth_percent="0.85" />
 
-    <TextView
-        android:layout_width="199dp"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="2dp"
-        android:text="* Mínimo 10 caracteres"
-        android:textAlignment="center"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp" />
+        <!-- Apellido Materno -->
+        <EditText
+            android:id="@+id/txtapellidoMaterno"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edittext_style"
+            android:backgroundTint="#8EE5E6"
+            android:drawablePadding="10dp"
+            android:hint="Apellido materno"
+            android:inputType="text"
+            android:maxWidth="400dp"
+            android:paddingStart="16dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#A9A9A9"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtapellidoPaterno"
+            app:layout_constraintWidth_percent="0.85" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
-        android:text="* Mínimo una letra máyuscula"
-        android:textAlignment="center"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp" />
+        <!-- Correo -->
+        <EditText
+            android:id="@+id/txtCorreo"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edittext_style"
+            android:backgroundTint="#8EE5E6"
+            android:drawablePadding="10dp"
+            android:hint="Correo electrónico"
+            android:inputType="textEmailAddress"
+            android:maxWidth="400dp"
+            android:paddingStart="16dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#A9A9A9"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtapellidoMaterno"
+            app:layout_constraintWidth_percent="0.85" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="2dp"
-        android:text="* Mínimo una letra minuscula"
-        android:textAlignment="center"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp" />
+        <!-- Contraseña -->
+        <EditText
+            android:id="@+id/txtContrasena"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edittext_style"
+            android:backgroundTint="#8EE5E6"
+            android:drawablePadding="10dp"
+            android:hint="Contraseña"
+            android:inputType="textPassword"
+            android:maxWidth="400dp"
+            android:paddingStart="16dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#A9A9A9"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtCorreo"
+            app:layout_constraintWidth_percent="0.85" />
 
-    <!-- Campo de correo -->
-    <TextView
-        android:layout_width="199dp"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="15dp"
-        android:text="* Mínimo una número"
-        android:textAlignment="center"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp" />
+        <!-- Requisitos de contraseña -->
+        <TextView
+            android:id="@+id/txtRequisitos"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:maxWidth="400dp"
+            android:text="Tu contraseña debe de tener:"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtContrasena"
+            app:layout_constraintWidth_percent="0.85" />
 
+        <TextView
+            android:id="@+id/txtReq1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:maxWidth="400dp"
+            android:text="* Mínimo 10 caracteres"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtRequisitos"
+            app:layout_constraintWidth_percent="0.85" />
 
-    <EditText
-        android:id="@+id/txtTelefono"
-        android:layout_width="280dp"
-        android:layout_height="50dp"
-        android:hint="Número de teléfono"
-        android:backgroundTint="#8EE5E6"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#A9A9A9"
-        android:inputType="phone"
-        android:imeOptions="actionNext"
-        android:maxLines="1"
-        android:drawablePadding="10dp"
-        android:paddingStart="16dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/edittext_style" />
+        <TextView
+            android:id="@+id/txtReq2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:maxWidth="400dp"
+            android:text="* Mínimo una letra máyuscula"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtReq1"
+            app:layout_constraintWidth_percent="0.85" />
 
-    <EditText
-        android:id="@+id/txtUsuario"
-        android:layout_width="280dp"
-        android:layout_height="50dp"
-        android:hint="Usuario"
-        android:backgroundTint="#8EE5E6"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#A9A9A9"
-        android:inputType="text"
-        android:drawablePadding="10dp"
-        android:paddingStart="16dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/edittext_style" />
+        <TextView
+            android:id="@+id/txtReq3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:maxWidth="400dp"
+            android:text="* Mínimo una letra minúscula"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtReq2"
+            app:layout_constraintWidth_percent="0.85" />
 
+        <TextView
+            android:id="@+id/txtReq4"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:maxWidth="400dp"
+            android:text="* Mínimo un número"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtReq3"
+            app:layout_constraintWidth_percent="0.85" />
 
-    <!-- Botón de iniciar sesión -->
+        <!-- Teléfono -->
+        <EditText
+            android:id="@+id/txtTelefono"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/edittext_style"
+            android:backgroundTint="#8EE5E6"
+            android:drawablePadding="10dp"
+            android:hint="Número de teléfono"
+            android:imeOptions="actionNext"
+            android:inputType="phone"
+            android:maxLines="1"
+            android:maxWidth="400dp"
+            android:paddingStart="16dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#A9A9A9"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtReq4"
+            app:layout_constraintWidth_percent="0.85" />
 
-    <!-- Enlace a registro -->
-    <Button
-        android:id="@+id/btnRegistrarse"
-        android:layout_width="200dp"
-        android:layout_height="48dp"
-        android:layout_marginBottom="2dp"
-        android:background="@drawable/button_rounded"
-        android:backgroundTint="#8EE5E6"
-        android:text="Registrarte"
-        android:textColor="#000000" />
+        <!-- Usuario -->
+        <EditText
+            android:id="@+id/txtUsuario"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/edittext_style"
+            android:backgroundTint="#8EE5E6"
+            android:drawablePadding="10dp"
+            android:hint="Usuario"
+            android:inputType="text"
+            android:maxWidth="400dp"
+            android:paddingStart="16dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#A9A9A9"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtTelefono"
+            app:layout_constraintWidth_percent="0.85" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Regresar "
-        android:textColor="#FFFFFF"
-        android:textSize="14sp" />
+        <!-- Botón Registrarse -->
+        <Button
+            android:id="@+id/btnRegistrarse"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/button_rounded"
+            android:backgroundTint="#8EE5E6"
+            android:maxWidth="300dp"
+            android:text="Registrarte"
+            android:textColor="#000000"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txtUsuario"
+            app:layout_constraintWidth_percent="0.7" />
 
+        <!-- Texto Iniciar Sesión -->
+        <TextView
+            android:id="@+id/txtIniciarSesion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="24dp"
+            android:text="Inicia sesión"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/btnRegistrarse" />
 
-</LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</ScrollView>
