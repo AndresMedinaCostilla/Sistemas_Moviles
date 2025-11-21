@@ -151,7 +151,7 @@
         android:id="@+id/txtTelefono"
         android:layout_width="280dp"
         android:layout_height="50dp"
-        android:hint="Número de teléfono"
+        android:hint="Usuario"
         android:backgroundTint="#8EE5E6"
         android:textColor="#FFFFFF"
         android:textColorHint="#A9A9A9"
