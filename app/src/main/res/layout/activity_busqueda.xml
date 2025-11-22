@@ -1,64 +1,143 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:background="#101010"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="#101010">
 
-    <!-- Barra de búsqueda simplificada -->
+    <!-- Barra de búsqueda FIJA -->
     <LinearLayout
         android:id="@+id/searchBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp"
         android:background="#202020"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:orientation="vertical"
+        android:elevation="4dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
+        <!-- Input de búsqueda con toggle de favoritos -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:padding="16dp"
             android:orientation="horizontal"
-            android:background="#202020"
-            android:padding="12dp"
             android:gravity="center_vertical">
 
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@drawable/buscar"
-                android:layout_marginEnd="12dp"
-                android:contentDescription="Buscar"
-                app:tint="#8EE5E6" />
-
-            <EditText
-                android:id="@+id/etBuscar"
+            <!-- Campo de búsqueda -->
+            <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:background="@android:color/transparent"
-                android:hint="Buscar publicaciones..."
-                android:textSize="16sp"
-                android:textColor="#FFFFFF"
-                android:textColorHint="#AAAAAA"
-                android:imeOptions="actionSearch"
-                android:maxLines="1" />
+                android:orientation="horizontal"
+                android:background="@drawable/edittext_style"
+                android:backgroundTint="#303030"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/buscar"
+                    android:layout_marginEnd="12dp"
+                    android:contentDescription="Buscar"
+                    android:tint="#8EE5E6" />
+
+                <EditText
+                    android:id="@+id/etBuscar"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@android:color/transparent"
+                    android:hint="Buscar publicaciones..."
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#AAAAAA"
+                    android:imeOptions="actionSearch"
+                    android:maxLines="1" />
+
+            </LinearLayout>
+
+            <!-- Toggle de favoritos -->
+            <ImageView
+                android:id="@+id/btnToggleFavoritos"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="12dp"
+                android:src="@drawable/star"
+                android:tint="#AAAAAA"
+                android:padding="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="Buscar en favoritos" />
 
         </LinearLayout>
 
+        <!-- Indicador de filtro activo -->
+        <TextView
+            android:id="@+id/txtFiltroActivo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="8dp"
+            android:text="Buscando en: Todas las publicaciones"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:visibility="visible" />
+
     </LinearLayout>
 
-    <!-- RecyclerView para resultados -->
+    <!-- RecyclerView para resultados (SCROLLEABLE) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerResultados"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_margin="8dp"
+        android:clipToPadding="false"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        app:layout_constraintTop_toBottomOf="@id/searchBar"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         tools:listitem="@layout/item_publicacion" />
 
-</LinearLayout>
+    <!-- Mensaje cuando no hay resultados -->
+    <LinearLayout
+        android:id="@+id/layoutNoResultados"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/buscar"
+            android:tint="#555555"
+            android:contentDescription="Sin resultados" />
+
+        <TextView
+            android:id="@+id/txtNoResultados"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="No se encontraron resultados"
+            android:textColor="#AAAAAA"
+            android:textSize="16sp"
+            android:textAlignment="center" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
