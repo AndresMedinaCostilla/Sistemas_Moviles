@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -39,8 +38,6 @@ class HomeFragment : Fragment() {
         btnAdd = view.findViewById(R.id.btnAdd)
         btnSearch = view.findViewById(R.id.btnSearch)
 
-        val perfilImageView = view.findViewById<ImageView>(R.id.imgUserIcon)
-
         // Configurar RecyclerView
         setupRecyclerView()
 
@@ -49,11 +46,6 @@ class HomeFragment : Fragment() {
 
         // Cargar publicaciones (datos de ejemplo)
         cargarPublicaciones()
-
-        perfilImageView.setOnClickListener {
-            // Usa el ID de la acción definida en nav_graph.xml
-            findNavController().navigate(R.id.action_homeFragment_to_perfilFragment)
-        }
     }
 
     private fun setupRecyclerView() {
@@ -66,8 +58,10 @@ class HomeFragment : Fragment() {
             },
             onCommentClick = { publicacion ->
                 // Navegar a comentarios
-                Toast.makeText(context, "Comentarios de: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
-                // TODO: findNavController().navigate(R.id.action_homeFragment_to_commentsFragment)
+                findNavController().navigate(R.id.action_homeFragment_to_commentsFragment)
+                // TODO: Pasar el ID de la publicación como argumento
+                // val bundle = Bundle().apply { putString("publicacionId", publicacion.id) }
+                // findNavController().navigate(R.id.action_homeFragment_to_commentsFragment, bundle)
             },
             onFavoriteClick = { publicacion ->
                 // Manejar favorito

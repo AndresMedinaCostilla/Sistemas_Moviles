@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:background="#0D0D0D">
+
+    <!-- Header de la respuesta -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/ivReplyAvatar"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/user"
+            android:scaleType="centerCrop"
+            android:background="#8EE5E6"
+            android:padding="6dp"
+            android:contentDescription="Avatar del usuario" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvReplyUserName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Usuario Respuesta"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvReplyTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="22 de nov. 2025, 4:15 PM"
+                android:textColor="#AAAAAA"
+                android:textSize="11sp"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Contenido de la respuesta -->
+    <TextView
+        android:id="@+id/tvReplyText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="42dp"
+        android:text="Esta es una respuesta al comentario principal."
+        android:textColor="#E0E0E0"
+        android:textSize="13sp"
+        android:lineSpacingExtra="3dp" />
+
+</LinearLayout>
