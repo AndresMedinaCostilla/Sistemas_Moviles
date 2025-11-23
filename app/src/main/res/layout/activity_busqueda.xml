@@ -93,6 +93,18 @@
 
     </LinearLayout>
 
+    <!-- ✅ NUEVO: ProgressBar con tu spinner personalizado -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:indeterminateDrawable="@drawable/loading_spinner"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <!-- RecyclerView para resultados (SCROLLEABLE) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerResultados"
@@ -133,10 +145,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="No se encontraron resultados"
+            android:text="Escribe algo para buscar publicaciones"
             android:textColor="#AAAAAA"
             android:textSize="16sp"
-            android:textAlignment="center" />
+            android:textAlignment="center"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp" />
 
     </LinearLayout>
 

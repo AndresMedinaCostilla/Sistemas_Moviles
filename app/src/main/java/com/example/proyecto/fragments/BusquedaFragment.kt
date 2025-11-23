@@ -9,16 +9,26 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.proyecto.R
 import com.example.proyecto.adapters.PublicacionesAdapter
 import com.example.proyecto.models.Publicacion
+import com.example.proyecto.network.RetrofitClient
+import com.example.proyecto.network.ReaccionRequest
+import com.example.proyecto.network.FavoritoRequest
+import com.example.proyecto.utils.SessionManager
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class BusquedaFragment : Fragment() {
 
@@ -28,11 +38,14 @@ class BusquedaFragment : Fragment() {
     private lateinit var recyclerResultados: RecyclerView
     private lateinit var layoutNoResultados: LinearLayout
     private lateinit var txtNoResultados: TextView
+    private lateinit var progressBar: ProgressBar
     private lateinit var adapter: PublicacionesAdapter
+    private lateinit var sessionManager: SessionManager
 
     private var buscarSoloFavoritos = false
-    private var todasLasPublicaciones = listOf<Publicacion>()
-    private var publicacionesFavoritas = mutableSetOf<String>()
+    private var todasLasPublicaciones = mutableListOf<Publicacion>()
+    private var publicacionesFavoritasLocales = mutableSetOf<String>()
+    private var idUsuarioActual: Int = 0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -44,34 +57,55 @@ class BusquedaFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        sessionManager = SessionManager(requireContext())
+        val userData = sessionManager.getUserData()
+        idUsuarioActual = userData?.idUsuario ?: 0
+
+        if (idUsuarioActual == 0) {
+            Toast.makeText(context, "Error: No hay sesión activa", Toast.LENGTH_LONG).show()
+            return
+        }
+
         etBuscar = view.findViewById(R.id.etBuscar)
         btnToggleFavoritos = view.findViewById(R.id.btnToggleFavoritos)
         txtFiltroActivo = view.findViewById(R.id.txtFiltroActivo)
         recyclerResultados = view.findViewById(R.id.recyclerResultados)
         layoutNoResultados = view.findViewById(R.id.layoutNoResultados)
         txtNoResultados = view.findViewById(R.id.txtNoResultados)
+        progressBar = view.findViewById(R.id.progressBar)
 
         setupRecyclerView()
         setupBusqueda()
         setupToggleFavoritos()
-        cargarPublicaciones()
-        actualizarResultados("")
+
+        // Cargar favoritos guardados localmente (para el filtro)
+        cargarFavoritosLocales()
+
+        // Cargar publicaciones desde el backend
+        cargarPublicacionesDesdeBackend()
     }
 
     private fun setupRecyclerView() {
         adapter = PublicacionesAdapter(
             publicaciones = emptyList(),
             onLikeClick = { publicacion ->
-                Toast.makeText(context, "Like en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+                manejarLike(publicacion)
             },
             onDislikeClick = { publicacion ->
-                Toast.makeText(context, "Dislike en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+                manejarDislike(publicacion)
             },
             onCommentClick = { publicacion ->
-                findNavController().navigate(R.id.action_busquedaFragment_to_commentsFragment)
+                val bundle = bundleOf(
+                    "idPublicacion" to publicacion.id.toInt(),
+                    "tituloPublicacion" to publicacion.titulo
+                )
+                findNavController().navigate(
+                    R.id.action_busquedaFragment_to_commentsFragment,
+                    bundle
+                )
             },
             onFavoriteClick = { publicacion ->
-                toggleFavorito(publicacion)
+                manejarFavorito(publicacion)
             },
             onPublicacionClick = { publicacion ->
                 Toast.makeText(context, "Ver: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
@@ -120,9 +154,285 @@ class BusquedaFragment : Fragment() {
         }
     }
 
+    // ==================== CARGAR PUBLICACIONES DESDE BACKEND ====================
+
+    private fun cargarPublicacionesDesdeBackend() {
+        mostrarCargando(true)
+
+        lifecycleScope.launch {
+            try {
+                val response = RetrofitClient.publicacionesApi.obtenerPublicaciones()
+
+                if (response.isSuccessful && response.body() != null) {
+                    val publicacionesResponse = response.body()!!.data
+                    val baseUrl = RetrofitClient.BASE_URL.removeSuffix("/")
+
+                    // Convertir a modelo local
+                    todasLasPublicaciones = publicacionesResponse.map { pubResp ->
+                        val imagenesCompletas = pubResp.imagenes.map { url ->
+                            if (url.startsWith("http")) url else "$baseUrl$url"
+                        }
+
+                        Publicacion(
+                            id = pubResp.id_publicacion.toString(),
+                            titulo = pubResp.titulo,
+                            descripcion = pubResp.descripcion ?: "",
+                            imagenesUrl = imagenesCompletas,
+                            fecha = formatearFecha(pubResp.fecha_publicacion),
+                            likes = pubResp.cantidad_likes,
+                            dislikes = 0,
+                            comentarios = pubResp.cantidad_comentarios,
+                            usuarioId = pubResp.usuario?.id_usuario?.toString() ?: "0",
+                            usuarioNombre = if (pubResp.usuario != null) {
+                                "${pubResp.usuario.nombre} ${pubResp.usuario.apellido_paterno}"
+                            } else {
+                                "Usuario"
+                            },
+                            favoritos = pubResp.cantidad_favoritos,
+                            usuarioLike = false,
+                            usuarioDislike = false,
+                            usuarioFavorito = false
+                        )
+                    }.toMutableList()
+
+                    println("✅ ${todasLasPublicaciones.size} publicaciones cargadas desde el servidor")
+
+                    // ✅ Cargar el estado de reacciones del usuario
+                    cargarEstadoReacciones(todasLasPublicaciones)
+
+                    mostrarCargando(false)
+
+                    // Si no hay texto de búsqueda, mostrar mensaje inicial
+                    if (etBuscar.text.toString().isEmpty()) {
+                        mostrarMensajeInicial()
+                    } else {
+                        actualizarResultados(etBuscar.text.toString())
+                    }
+
+                } else {
+                    mostrarCargando(false)
+                    mostrarError("Error al cargar publicaciones del servidor")
+                    println("❌ Error HTTP: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                mostrarCargando(false)
+                mostrarError("Error de conexión: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Carga el estado de reacciones del usuario para cada publicación
+     * (igual que en HomeFragment)
+     */
+    private fun cargarEstadoReacciones(publicaciones: List<Publicacion>) {
+        lifecycleScope.launch {
+            publicaciones.forEach { pub ->
+                try {
+                    val response = RetrofitClient.reaccionesApi.obtenerEstadoReacciones(
+                        pub.id.toInt(),
+                        idUsuarioActual
+                    )
+
+                    if (response.isSuccessful && response.body() != null) {
+                        val estado = response.body()!!.data
+
+                        if (estado != null) {
+                            pub.usuarioLike = estado.reaccion_usuario == "like"
+                            pub.usuarioDislike = estado.reaccion_usuario == "dislike"
+                            pub.usuarioFavorito = estado.es_favorito
+                            pub.dislikes = estado.dislikes
+
+                            // Sincronizar favoritos locales
+                            if (estado.es_favorito) {
+                                publicacionesFavoritasLocales.add(pub.id)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("❌ Error al obtener estado de publicación ${pub.id}: ${e.message}")
+                }
+            }
+
+            // Guardar favoritos sincronizados
+            guardarFavoritosLocales()
+
+            // Actualizar UI después de cargar todos los estados
+            adapter.notifyDataSetChanged()
+
+            println("✅ Estados de reacciones cargados")
+        }
+    }
+
+    // ==================== MANEJO DE REACCIONES ====================
+
+    /**
+     * Maneja el click en el botón Like
+     */
+    private fun manejarLike(publicacion: Publicacion) {
+        lifecycleScope.launch {
+            try {
+                val idPublicacion = publicacion.id.toInt()
+                val request = ReaccionRequest(
+                    id_usuario = idUsuarioActual,
+                    tipo_reaccion = "like"
+                )
+
+                val response = RetrofitClient.reaccionesApi.reaccionarPublicacion(
+                    idPublicacion,
+                    request
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val data = response.body()!!.data
+
+                    if (data != null) {
+                        // Actualizar modelo local
+                        publicacion.likes = data.likes
+                        publicacion.dislikes = data.dislikes
+                        publicacion.usuarioLike = data.reaccion_usuario == "like"
+                        publicacion.usuarioDislike = data.reaccion_usuario == "dislike"
+
+                        // Notificar al adapter del cambio específico
+                        val position = adapter.publicaciones.indexOf(publicacion)
+                        if (position != -1) {
+                            adapter.notifyItemChanged(position)
+                        }
+
+                        val mensaje = when {
+                            publicacion.usuarioLike -> "👍 Like agregado"
+                            else -> "Like eliminado"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Error al procesar like", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Maneja el click en el botón Dislike
+     */
+    private fun manejarDislike(publicacion: Publicacion) {
+        lifecycleScope.launch {
+            try {
+                val idPublicacion = publicacion.id.toInt()
+                val request = ReaccionRequest(
+                    id_usuario = idUsuarioActual,
+                    tipo_reaccion = "dislike"
+                )
+
+                val response = RetrofitClient.reaccionesApi.reaccionarPublicacion(
+                    idPublicacion,
+                    request
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val data = response.body()!!.data
+
+                    if (data != null) {
+                        // Actualizar modelo local
+                        publicacion.likes = data.likes
+                        publicacion.dislikes = data.dislikes
+                        publicacion.usuarioLike = data.reaccion_usuario == "like"
+                        publicacion.usuarioDislike = data.reaccion_usuario == "dislike"
+
+                        // Notificar al adapter del cambio específico
+                        val position = adapter.publicaciones.indexOf(publicacion)
+                        if (position != -1) {
+                            adapter.notifyItemChanged(position)
+                        }
+
+                        val mensaje = when {
+                            publicacion.usuarioDislike -> "👎 Dislike agregado"
+                            else -> "Dislike eliminado"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Error al procesar dislike", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Maneja el click en el botón Favorito
+     */
+    private fun manejarFavorito(publicacion: Publicacion) {
+        lifecycleScope.launch {
+            try {
+                val idPublicacion = publicacion.id.toInt()
+                val request = FavoritoRequest(id_usuario = idUsuarioActual)
+
+                val response = RetrofitClient.reaccionesApi.toggleFavorito(
+                    idPublicacion,
+                    request
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val data = response.body()!!.data
+
+                    if (data != null) {
+                        // Actualizar modelo local
+                        publicacion.favoritos = data.favoritos
+                        publicacion.usuarioFavorito = data.es_favorito
+
+                        // Actualizar favoritos locales para el filtro
+                        if (data.es_favorito) {
+                            publicacionesFavoritasLocales.add(publicacion.id)
+                        } else {
+                            publicacionesFavoritasLocales.remove(publicacion.id)
+                        }
+                        guardarFavoritosLocales()
+
+                        // Si estamos en modo "solo favoritos" y se quitó el favorito, recargar
+                        if (buscarSoloFavoritos && !data.es_favorito) {
+                            actualizarResultados(etBuscar.text.toString())
+                        } else {
+                            // Solo notificar cambio del item
+                            val position = adapter.publicaciones.indexOf(publicacion)
+                            if (position != -1) {
+                                adapter.notifyItemChanged(position)
+                            }
+                        }
+
+                        val mensaje = if (data.es_favorito) {
+                            "⭐ Agregado a favoritos"
+                        } else {
+                            "Eliminado de favoritos"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Error al procesar favorito", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ==================== ACTUALIZAR RESULTADOS ====================
+
     private fun actualizarResultados(query: String) {
+        if (todasLasPublicaciones.isEmpty()) {
+            return // No hay datos cargados aún
+        }
+
         val publicacionesBase = if (buscarSoloFavoritos) {
-            todasLasPublicaciones.filter { publicacionesFavoritas.contains(it.id) }
+            // Filtrar por favoritos desde el backend (usuarioFavorito == true)
+            todasLasPublicaciones.filter { it.usuarioFavorito }
         } else {
             todasLasPublicaciones
         }
@@ -142,12 +452,14 @@ class BusquedaFragment : Fragment() {
             layoutNoResultados.visibility = View.VISIBLE
 
             txtNoResultados.text = when {
-                buscarSoloFavoritos && publicacionesFavoritas.isEmpty() ->
+                buscarSoloFavoritos && !todasLasPublicaciones.any { it.usuarioFavorito } ->
                     "No tienes publicaciones en favoritos"
                 buscarSoloFavoritos ->
                     "No se encontraron resultados en favoritos"
-                query.isEmpty() ->
+                query.isEmpty() && todasLasPublicaciones.isEmpty() ->
                     "No hay publicaciones disponibles"
+                query.isEmpty() ->
+                    "Escribe algo para buscar publicaciones"
                 else ->
                     "No se encontraron resultados para \"$query\""
             }
@@ -158,97 +470,59 @@ class BusquedaFragment : Fragment() {
         }
     }
 
-    private fun toggleFavorito(publicacion: Publicacion) {
-        if (publicacionesFavoritas.contains(publicacion.id)) {
-            publicacionesFavoritas.remove(publicacion.id)
-            Toast.makeText(context, "Eliminado de favoritos", Toast.LENGTH_SHORT).show()
-        } else {
-            publicacionesFavoritas.add(publicacion.id)
-            Toast.makeText(context, "Agregado a favoritos", Toast.LENGTH_SHORT).show()
-        }
+    private fun mostrarMensajeInicial() {
+        recyclerResultados.visibility = View.GONE
+        layoutNoResultados.visibility = View.VISIBLE
+        txtNoResultados.text = "Escribe algo para buscar publicaciones"
+    }
 
-        if (buscarSoloFavoritos) {
-            actualizarResultados(etBuscar.text.toString())
+    // ==================== FAVORITOS LOCALES (SOLO PARA EL FILTRO) ====================
+
+    private fun cargarFavoritosLocales() {
+        val prefs = requireContext().getSharedPreferences("favoritos_$idUsuarioActual", android.content.Context.MODE_PRIVATE)
+        val favoritosString = prefs.getString("publicaciones_favoritas", "")
+
+        if (!favoritosString.isNullOrEmpty()) {
+            publicacionesFavoritasLocales = favoritosString.split(",").filter { it.isNotEmpty() }.toMutableSet()
+            println("📚 ${publicacionesFavoritasLocales.size} favoritos locales cargados")
         }
     }
 
-    private fun cargarPublicaciones() {
-        // DATOS DE EJEMPLO con múltiples imágenes
-        todasLasPublicaciones = listOf(
-            Publicacion(
-                id = "1",
-                titulo = "Introducción a Kotlin",
-                descripcion = "Aprende los fundamentos de Kotlin para desarrollo Android.",
-                imagenesUrl = listOf("gato1", "user", "star"),
-                fecha = "20 de nov. 2025, 10:00 AM",
-                likes = 45,
-                dislikes = 3,
-                comentarios = 12,
-                usuarioId = "user1",
-                usuarioNombre = "Ana Desarrolladora"
-            ),
-            Publicacion(
-                id = "2",
-                titulo = "Jetpack Compose Tutorial",
-                descripcion = "Construye interfaces modernas con Jetpack Compose.",
-                imagenesUrl = listOf("home", "buscar"),
-                fecha = "21 de nov. 2025, 2:30 PM",
-                likes = 67,
-                dislikes = 5,
-                comentarios = 23,
-                usuarioId = "user2",
-                usuarioNombre = "Carlos Tech"
-            ),
-            Publicacion(
-                id = "3",
-                titulo = "Firebase y Android",
-                descripcion = "Integra Firebase en tu aplicación Android.",
-                imagenesUrl = listOf("gato1"),
-                fecha = "21 de nov. 2025, 5:15 PM",
-                likes = 34,
-                dislikes = 2,
-                comentarios = 8,
-                usuarioId = "user3",
-                usuarioNombre = "María Backend"
-            ),
-            Publicacion(
-                id = "4",
-                titulo = "MVVM Architecture",
-                descripcion = "Implementa el patrón MVVM en tus apps Android.",
-                imagenesUrl = listOf("add", "star", "like"),
-                fecha = "22 de nov. 2025, 9:00 AM",
-                likes = 89,
-                dislikes = 7,
-                comentarios = 31,
-                usuarioId = "user4",
-                usuarioNombre = "Luis Arquitecto"
-            ),
-            Publicacion(
-                id = "5",
-                titulo = "Room Database Tutorial",
-                descripcion = "Persiste datos localmente con Room.",
-                imagenesUrl = listOf("chat", "add"),
-                fecha = "22 de nov. 2025, 11:45 AM",
-                likes = 52,
-                dislikes = 4,
-                comentarios = 15,
-                usuarioId = "user1",
-                usuarioNombre = "Ana Desarrolladora"
-            ),
-            Publicacion(
-                id = "6",
-                titulo = "Retrofit y API REST",
-                descripcion = "Conecta tu app con APIs REST usando Retrofit.",
-                imagenesUrl = listOf("gato1", "user", "home"),
-                fecha = "22 de nov. 2025, 3:20 PM",
-                likes = 78,
-                dislikes = 6,
-                comentarios = 19,
-                usuarioId = "user5",
-                usuarioNombre = "Pedro Network"
-            )
-        )
+    private fun guardarFavoritosLocales() {
+        val prefs = requireContext().getSharedPreferences("favoritos_$idUsuarioActual", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putString("publicaciones_favoritas", publicacionesFavoritasLocales.joinToString(",")).apply()
+    }
 
-        publicacionesFavoritas.addAll(listOf("2", "4"))
+    // ==================== UTILIDADES ====================
+
+    private fun mostrarCargando(mostrar: Boolean) {
+        progressBar.visibility = if (mostrar) View.VISIBLE else View.GONE
+        recyclerResultados.visibility = if (mostrar) View.GONE else recyclerResultados.visibility
+        layoutNoResultados.visibility = if (mostrar) View.GONE else layoutNoResultados.visibility
+    }
+
+    private fun mostrarError(mensaje: String) {
+        Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+        layoutNoResultados.visibility = View.VISIBLE
+        recyclerResultados.visibility = View.GONE
+        txtNoResultados.text = mensaje
+    }
+
+    private fun formatearFecha(fechaISO: String): String {
+        return try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("dd 'de' MMM yyyy, h:mm a", Locale("es", "MX"))
+            val date = inputFormat.parse(fechaISO)
+            outputFormat.format(date)
+        } catch (e: Exception) {
+            try {
+                val inputFormat2 = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                val outputFormat = SimpleDateFormat("dd 'de' MMM yyyy, h:mm a", Locale("es", "MX"))
+                val date = inputFormat2.parse(fechaISO)
+                outputFormat.format(date)
+            } catch (e2: Exception) {
+                fechaISO
+            }
+        }
     }
 }
