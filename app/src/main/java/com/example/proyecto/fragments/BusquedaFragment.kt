@@ -32,7 +32,7 @@ class BusquedaFragment : Fragment() {
 
     private var buscarSoloFavoritos = false
     private var todasLasPublicaciones = listOf<Publicacion>()
-    private var publicacionesFavoritas = mutableSetOf<String>() // IDs de favoritos
+    private var publicacionesFavoritas = mutableSetOf<String>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -44,7 +44,6 @@ class BusquedaFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Inicializar vistas
         etBuscar = view.findViewById(R.id.etBuscar)
         btnToggleFavoritos = view.findViewById(R.id.btnToggleFavoritos)
         txtFiltroActivo = view.findViewById(R.id.txtFiltroActivo)
@@ -52,19 +51,10 @@ class BusquedaFragment : Fragment() {
         layoutNoResultados = view.findViewById(R.id.layoutNoResultados)
         txtNoResultados = view.findViewById(R.id.txtNoResultados)
 
-        // Configurar RecyclerView
         setupRecyclerView()
-
-        // Configurar búsqueda
         setupBusqueda()
-
-        // Configurar toggle de favoritos
         setupToggleFavoritos()
-
-        // Cargar publicaciones de ejemplo
         cargarPublicaciones()
-
-        // Mostrar todas las publicaciones al inicio
         actualizarResultados("")
     }
 
@@ -73,23 +63,18 @@ class BusquedaFragment : Fragment() {
             publicaciones = emptyList(),
             onLikeClick = { publicacion ->
                 Toast.makeText(context, "Like en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
-                // TODO: Actualizar en la base de datos
             },
             onDislikeClick = { publicacion ->
                 Toast.makeText(context, "Dislike en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
-                // TODO: Actualizar en la base de datos
             },
             onCommentClick = { publicacion ->
-                // Navegar a comentarios
                 findNavController().navigate(R.id.action_busquedaFragment_to_commentsFragment)
-                // TODO: Pasar el ID de la publicación como argumento
             },
             onFavoriteClick = { publicacion ->
                 toggleFavorito(publicacion)
             },
             onPublicacionClick = { publicacion ->
                 Toast.makeText(context, "Ver: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
-                // TODO: Navegar a detalle de publicación
             }
         )
 
@@ -100,11 +85,9 @@ class BusquedaFragment : Fragment() {
     private fun setupBusqueda() {
         etBuscar.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 actualizarResultados(s.toString())
             }
-
             override fun afterTextChanged(s: Editable?) {}
         })
     }
@@ -119,7 +102,6 @@ class BusquedaFragment : Fragment() {
 
     private fun actualizarEstadoToggle() {
         if (buscarSoloFavoritos) {
-            // Estado ACTIVADO - Buscar solo en favoritos
             btnToggleFavoritos.setColorFilter(
                 ContextCompat.getColor(requireContext(), android.R.color.holo_orange_light)
             )
@@ -128,7 +110,6 @@ class BusquedaFragment : Fragment() {
                 ContextCompat.getColor(requireContext(), android.R.color.holo_orange_light)
             )
         } else {
-            // Estado DESACTIVADO - Buscar en todas
             btnToggleFavoritos.setColorFilter(
                 ContextCompat.getColor(requireContext(), android.R.color.darker_gray)
             )
@@ -141,10 +122,8 @@ class BusquedaFragment : Fragment() {
 
     private fun actualizarResultados(query: String) {
         val publicacionesBase = if (buscarSoloFavoritos) {
-            // Filtrar solo favoritos
             todasLasPublicaciones.filter { publicacionesFavoritas.contains(it.id) }
         } else {
-            // Todas las publicaciones
             todasLasPublicaciones
         }
 
@@ -159,7 +138,6 @@ class BusquedaFragment : Fragment() {
         }
 
         if (resultados.isEmpty()) {
-            // Mostrar mensaje de no resultados
             recyclerResultados.visibility = View.GONE
             layoutNoResultados.visibility = View.VISIBLE
 
@@ -174,7 +152,6 @@ class BusquedaFragment : Fragment() {
                     "No se encontraron resultados para \"$query\""
             }
         } else {
-            // Mostrar resultados
             recyclerResultados.visibility = View.VISIBLE
             layoutNoResultados.visibility = View.GONE
             adapter.updatePublicaciones(resultados)
@@ -183,31 +160,26 @@ class BusquedaFragment : Fragment() {
 
     private fun toggleFavorito(publicacion: Publicacion) {
         if (publicacionesFavoritas.contains(publicacion.id)) {
-            // Quitar de favoritos
             publicacionesFavoritas.remove(publicacion.id)
             Toast.makeText(context, "Eliminado de favoritos", Toast.LENGTH_SHORT).show()
         } else {
-            // Agregar a favoritos
             publicacionesFavoritas.add(publicacion.id)
             Toast.makeText(context, "Agregado a favoritos", Toast.LENGTH_SHORT).show()
         }
 
-        // Actualizar resultados si estamos filtrando por favoritos
         if (buscarSoloFavoritos) {
             actualizarResultados(etBuscar.text.toString())
         }
-
-        // TODO: Actualizar en la base de datos
     }
 
     private fun cargarPublicaciones() {
-        // DATOS DE EJEMPLO - Reemplaza con tu consulta a la base de datos
+        // DATOS DE EJEMPLO con múltiples imágenes
         todasLasPublicaciones = listOf(
             Publicacion(
                 id = "1",
                 titulo = "Introducción a Kotlin",
-                descripcion = "Aprende los fundamentos de Kotlin para desarrollo Android. Un lenguaje moderno y expresivo.",
-                imagenUrl = "",
+                descripcion = "Aprende los fundamentos de Kotlin para desarrollo Android.",
+                imagenesUrl = listOf("gato1", "user", "star"),
                 fecha = "20 de nov. 2025, 10:00 AM",
                 likes = 45,
                 dislikes = 3,
@@ -218,8 +190,8 @@ class BusquedaFragment : Fragment() {
             Publicacion(
                 id = "2",
                 titulo = "Jetpack Compose Tutorial",
-                descripcion = "Construye interfaces modernas con Jetpack Compose. El futuro del desarrollo UI en Android.",
-                imagenUrl = "",
+                descripcion = "Construye interfaces modernas con Jetpack Compose.",
+                imagenesUrl = listOf("home", "buscar"),
                 fecha = "21 de nov. 2025, 2:30 PM",
                 likes = 67,
                 dislikes = 5,
@@ -230,8 +202,8 @@ class BusquedaFragment : Fragment() {
             Publicacion(
                 id = "3",
                 titulo = "Firebase y Android",
-                descripcion = "Integra Firebase en tu aplicación Android: Auth, Firestore, Storage y más.",
-                imagenUrl = "",
+                descripcion = "Integra Firebase en tu aplicación Android.",
+                imagenesUrl = listOf("gato1"),
                 fecha = "21 de nov. 2025, 5:15 PM",
                 likes = 34,
                 dislikes = 2,
@@ -242,8 +214,8 @@ class BusquedaFragment : Fragment() {
             Publicacion(
                 id = "4",
                 titulo = "MVVM Architecture",
-                descripcion = "Implementa el patrón MVVM en tus apps Android para código más limpio y mantenible.",
-                imagenUrl = "",
+                descripcion = "Implementa el patrón MVVM en tus apps Android.",
+                imagenesUrl = listOf("add", "star", "like"),
                 fecha = "22 de nov. 2025, 9:00 AM",
                 likes = 89,
                 dislikes = 7,
@@ -254,8 +226,8 @@ class BusquedaFragment : Fragment() {
             Publicacion(
                 id = "5",
                 titulo = "Room Database Tutorial",
-                descripcion = "Persiste datos localmente con Room, la biblioteca de persistencia de Android.",
-                imagenUrl = "",
+                descripcion = "Persiste datos localmente con Room.",
+                imagenesUrl = listOf("chat", "add"),
                 fecha = "22 de nov. 2025, 11:45 AM",
                 likes = 52,
                 dislikes = 4,
@@ -266,8 +238,8 @@ class BusquedaFragment : Fragment() {
             Publicacion(
                 id = "6",
                 titulo = "Retrofit y API REST",
-                descripcion = "Conecta tu app con APIs REST usando Retrofit. Aprende a consumir servicios web.",
-                imagenUrl = "",
+                descripcion = "Conecta tu app con APIs REST usando Retrofit.",
+                imagenesUrl = listOf("gato1", "user", "home"),
                 fecha = "22 de nov. 2025, 3:20 PM",
                 likes = 78,
                 dislikes = 6,
@@ -277,7 +249,6 @@ class BusquedaFragment : Fragment() {
             )
         )
 
-        // Simular algunos favoritos iniciales (opcional)
         publicacionesFavoritas.addAll(listOf("2", "4"))
     }
 }

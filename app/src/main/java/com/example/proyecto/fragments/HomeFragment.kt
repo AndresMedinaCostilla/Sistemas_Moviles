@@ -62,7 +62,7 @@ class HomeFragment : Fragment() {
         setupBottomNavigation()
         setupTopNavigation()
 
-        // Cargar publicaciones (datos de ejemplo)
+        // Cargar publicaciones
         cargarPublicaciones()
     }
 
@@ -181,13 +181,13 @@ class HomeFragment : Fragment() {
     }
 
     private fun cargarPublicaciones() {
-        // DATOS DE EJEMPLO
+        // DATOS DE EJEMPLO con múltiples imágenes
         val publicacionesEjemplo = listOf(
             Publicacion(
                 id = "1",
                 titulo = "Mi primera publicación",
-                descripcion = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-                imagenUrl = "",
+                descripcion = "Esta publicación tiene 3 imágenes. Desliza para ver más.",
+                imagenesUrl = listOf("gato1", "user", "star"), // 3 imágenes diferentes
                 fecha = "Creado el 20 de septiembre del 2025 a las 12:00 pm",
                 likes = 15,
                 dislikes = 2,
@@ -198,8 +198,8 @@ class HomeFragment : Fragment() {
             Publicacion(
                 id = "2",
                 titulo = "Segunda publicación increíble",
-                descripcion = "Ut enim ad minim veniam, quis nostrud exercitation.",
-                imagenUrl = "",
+                descripcion = "Esta tiene solo 2 imágenes.",
+                imagenesUrl = listOf("home", "buscar"), // 2 imágenes
                 fecha = "Creado el 21 de septiembre del 2025 a las 3:30 pm",
                 likes = 42,
                 dislikes = 5,
@@ -210,14 +210,26 @@ class HomeFragment : Fragment() {
             Publicacion(
                 id = "3",
                 titulo = "Explorando nuevas tecnologías",
-                descripcion = "Duis aute irure dolor in reprehenderit in voluptate.",
-                imagenUrl = "",
+                descripcion = "Publicación con una sola imagen.",
+                imagenesUrl = listOf("gato1"), // 1 imagen
                 fecha = "Creado el 22 de septiembre del 2025 a las 9:15 am",
                 likes = 28,
                 dislikes = 1,
                 comentarios = 12,
                 usuarioId = "user3",
                 usuarioNombre = "Usuario3"
+            ),
+            Publicacion(
+                id = "4",
+                titulo = "Tutorial completo",
+                descripcion = "Otra publicación con 3 imágenes para explorar.",
+                imagenesUrl = listOf("add", "star", "like"), // 3 imágenes
+                fecha = "Creado el 22 de septiembre del 2025 a las 11:00 am",
+                likes = 67,
+                dislikes = 3,
+                comentarios = 19,
+                usuarioId = "user4",
+                usuarioNombre = "Usuario4"
             )
         )
 

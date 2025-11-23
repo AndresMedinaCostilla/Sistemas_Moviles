@@ -2,7 +2,6 @@
 <androidx.cardview.widget.CardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="8dp"
@@ -18,18 +17,34 @@
         android:layout_height="wrap_content"
         android:padding="12dp">
 
-        <!-- Imagen de la publicación -->
-        <ImageView
-            android:id="@+id/imgPublicacion"
+        <!-- Contenedor de imágenes con ViewPager2 -->
+        <FrameLayout
+            android:id="@+id/frameImagenes"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:scaleType="centerCrop"
-            android:src="@mipmap/gato_round"
-            android:contentDescription="Imagen de publicación"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintDimensionRatio="16:9" />
+            app:layout_constraintDimensionRatio="16:9">
+
+            <!-- ViewPager2 para múltiples imágenes -->
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/viewPagerImagenes"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <!-- Indicadores (dots) en la parte inferior -->
+            <LinearLayout
+                android:id="@+id/layoutIndicadores"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|center_horizontal"
+                android:layout_marginBottom="8dp"
+                android:background="#80000000"
+                android:orientation="horizontal"
+                android:padding="4dp" />
+
+        </FrameLayout>
 
         <!-- Título -->
         <TextView
@@ -43,7 +58,7 @@
             android:textSize="18sp"
             android:maxLines="2"
             android:ellipsize="end"
-            app:layout_constraintTop_toBottomOf="@id/imgPublicacion"
+            app:layout_constraintTop_toBottomOf="@id/frameImagenes"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
@@ -77,7 +92,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Contenedor de acciones (likes, dislikes, comentarios, favoritos) -->
+        <!-- Contenedor de acciones -->
         <LinearLayout
             android:id="@+id/layoutAcciones"
             android:layout_width="wrap_content"
@@ -110,7 +125,7 @@
                 android:layout_marginStart="6dp"
                 android:layout_gravity="center_vertical" />
 
-            <!-- Dislike (ícono de like rotado 180°) -->
+            <!-- Dislike -->
             <ImageView
                 android:id="@+id/btnDislike"
                 android:layout_width="24dp"
