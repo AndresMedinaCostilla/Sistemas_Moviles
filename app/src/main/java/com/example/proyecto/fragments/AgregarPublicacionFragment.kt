@@ -16,6 +16,7 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
@@ -35,6 +36,7 @@ class AgregarPublicacionFragment : Fragment() {
     private lateinit var btnCancelar: ImageButton
     private lateinit var btnGaleria: ImageButton
     private lateinit var btnPublicar: Button
+    private lateinit var btnGuardarBorrador: Button
     private lateinit var etTitulo: EditText
     private lateinit var etContenido: EditText
     private lateinit var tvContadorCaracteres: TextView
@@ -46,13 +48,20 @@ class AgregarPublicacionFragment : Fragment() {
     private val imagenesSeleccionadas = mutableListOf<Uri>()
     private var fotoUri: Uri? = null
 
-    // ActivityResultLauncher para la galería
+    companion object {
+        private const val KEY_IMAGENES = "imagenes_seleccionadas"
+        private const val KEY_TITULO = "titulo"
+        private const val KEY_CONTENIDO = "contenido"
+        private const val KEY_FOTO_URI = "foto_uri"
+    }
+
     private val galeriaLauncher = registerForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
             for (uri in uris) {
                 if (imagenesSeleccionadas.size < 3) {
+                    imagenesSeleccionadas.add(uri)
                     imagenesAdapter.agregarImagen(uri)
                 }
             }
@@ -60,38 +69,30 @@ class AgregarPublicacionFragment : Fragment() {
         }
     }
 
-    // ActivityResultLauncher para la cámara
     private val camaraLauncher = registerForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
         if (success && fotoUri != null) {
             if (imagenesSeleccionadas.size < 3) {
+                imagenesSeleccionadas.add(fotoUri!!)
                 imagenesAdapter.agregarImagen(fotoUri!!)
                 actualizarVistaImagenes()
             }
         }
     }
 
-    // Launcher para permisos de cámara
     private val permisosCamaraLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) {
-            abrirCamara()
-        } else {
-            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
-        }
+        if (granted) abrirCamara()
+        else Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
     }
 
-    // Launcher para permisos de galería
     private val permisosGaleriaLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) {
-            abrirGaleria()
-        } else {
-            Toast.makeText(context, "Permiso de galería denegado", Toast.LENGTH_SHORT).show()
-        }
+        if (granted) abrirGaleria()
+        else Toast.makeText(context, "Permiso de galería denegado", Toast.LENGTH_SHORT).show()
     }
 
     override fun onCreateView(
@@ -108,12 +109,47 @@ class AgregarPublicacionFragment : Fragment() {
         configurarRecyclerView()
         configurarListeners()
         configurarContadorCaracteres()
+        configurarBackPressed()
+
+        // Restaurar estado si existe
+        savedInstanceState?.let { restaurarEstado(it) }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Guardar imágenes
+        val uriStrings = ArrayList(imagenesSeleccionadas.map { it.toString() })
+        outState.putStringArrayList(KEY_IMAGENES, uriStrings)
+        // Guardar texto
+        outState.putString(KEY_TITULO, etTitulo.text.toString())
+        outState.putString(KEY_CONTENIDO, etContenido.text.toString())
+        // Guardar URI de foto temporal
+        fotoUri?.let { outState.putString(KEY_FOTO_URI, it.toString()) }
+    }
+
+    private fun restaurarEstado(savedInstanceState: Bundle) {
+        // Restaurar imágenes
+        savedInstanceState.getStringArrayList(KEY_IMAGENES)?.let { uriStrings ->
+            imagenesSeleccionadas.clear()
+            for (uriString in uriStrings) {
+                val uri = Uri.parse(uriString)
+                imagenesSeleccionadas.add(uri)
+                imagenesAdapter.agregarImagen(uri)
+            }
+            actualizarVistaImagenes()
+        }
+        // Restaurar texto
+        savedInstanceState.getString(KEY_TITULO)?.let { etTitulo.setText(it) }
+        savedInstanceState.getString(KEY_CONTENIDO)?.let { etContenido.setText(it) }
+        // Restaurar URI de foto
+        savedInstanceState.getString(KEY_FOTO_URI)?.let { fotoUri = Uri.parse(it) }
     }
 
     private fun inicializarVistas(view: View) {
         btnCancelar = view.findViewById(R.id.btnCancelar)
         btnGaleria = view.findViewById(R.id.btnGaleria)
         btnPublicar = view.findViewById(R.id.btnPublicar)
+        btnGuardarBorrador = view.findViewById(R.id.btnGuardarBorrador)
         etTitulo = view.findViewById(R.id.etTitulo)
         etContenido = view.findViewById(R.id.etContenido)
         tvContadorCaracteres = view.findViewById(R.id.tvContadorCaracteres)
@@ -123,34 +159,62 @@ class AgregarPublicacionFragment : Fragment() {
     }
 
     private fun configurarRecyclerView() {
-        imagenesAdapter = ImagenesAdapter(imagenesSeleccionadas) { position ->
-            // Eliminar imagen
+        imagenesAdapter = ImagenesAdapter(mutableListOf()) { position ->
+            if (position in imagenesSeleccionadas.indices) {
+                imagenesSeleccionadas.removeAt(position)
+            }
             imagenesAdapter.eliminarImagen(position)
             actualizarVistaImagenes()
         }
-
         recyclerImagenes.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         recyclerImagenes.adapter = imagenesAdapter
     }
 
     private fun configurarListeners() {
-        // Botón cancelar
-        btnCancelar.setOnClickListener {
-            findNavController().navigateUp()
-        }
+        btnCancelar.setOnClickListener { mostrarDialogoSalir() }
 
-        // Botón galería - Mostrar diálogo de opciones
         btnGaleria.setOnClickListener {
-            if (imagenesSeleccionadas.size < 3) {
-                mostrarDialogoOpciones()
-            } else {
-                Toast.makeText(context, "Máximo 3 imágenes permitidas", Toast.LENGTH_SHORT).show()
-            }
+            if (imagenesSeleccionadas.size < 3) mostrarDialogoOpciones()
+            else Toast.makeText(context, "Máximo 3 imágenes permitidas", Toast.LENGTH_SHORT).show()
         }
 
-        // Botón publicar
-        btnPublicar.setOnClickListener {
-            publicarContenido()
+        btnPublicar.setOnClickListener { publicarContenido() }
+        btnGuardarBorrador.setOnClickListener { guardarBorrador() }
+    }
+
+    private fun configurarBackPressed() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    mostrarDialogoSalir()
+                }
+            }
+        )
+    }
+
+    private fun tieneContenido(): Boolean {
+        return etTitulo.text.toString().trim().isNotEmpty() ||
+                etContenido.text.toString().trim().isNotEmpty() ||
+                imagenesSeleccionadas.isNotEmpty()
+    }
+
+    private fun mostrarDialogoSalir() {
+        if (tieneContenido()) {
+            AlertDialog.Builder(requireContext())
+                .setTitle("¿Guardar borrador?")
+                .setMessage("Tienes cambios sin guardar. ¿Deseas guardar esta publicación como borrador?")
+                .setPositiveButton("Guardar borrador") { _, _ ->
+                    guardarBorrador()
+                    findNavController().navigateUp()
+                }
+                .setNegativeButton("Descartar") { _, _ ->
+                    findNavController().navigateUp()
+                }
+                .setNeutralButton("Cancelar", null)
+                .show()
+        } else {
+            findNavController().navigateUp()
         }
     }
 
@@ -158,19 +222,16 @@ class AgregarPublicacionFragment : Fragment() {
         etContenido.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val length = s?.length ?: 0
-                tvContadorCaracteres.text = "$length/500"
+                tvContadorCaracteres.text = "${s?.length ?: 0}/500"
             }
             override fun afterTextChanged(s: Editable?) {}
         })
     }
 
     private fun mostrarDialogoOpciones() {
-        val opciones = arrayOf("Tomar foto", "Elegir de galería")
-
         AlertDialog.Builder(requireContext())
             .setTitle("Agregar imagen")
-            .setItems(opciones) { _, which ->
+            .setItems(arrayOf("Tomar foto", "Elegir de galería")) { _, which ->
                 when (which) {
                     0 -> verificarYAbrirCamara()
                     1 -> verificarYAbrirGaleria()
@@ -181,33 +242,23 @@ class AgregarPublicacionFragment : Fragment() {
     }
 
     private fun verificarYAbrirCamara() {
-        when {
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                abrirCamara()
-            }
-            else -> {
-                permisosCamaraLauncher.launch(Manifest.permission.CAMERA)
-            }
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED) {
+            abrirCamara()
+        } else {
+            permisosCamaraLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
     private fun verificarYAbrirGaleria() {
-        val permiso = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        val permiso = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU)
             Manifest.permission.READ_MEDIA_IMAGES
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
+        else Manifest.permission.READ_EXTERNAL_STORAGE
 
-        when {
-            ContextCompat.checkSelfPermission(requireContext(), permiso) == PackageManager.PERMISSION_GRANTED -> {
-                abrirGaleria()
-            }
-            else -> {
-                permisosGaleriaLauncher.launch(permiso)
-            }
+        if (ContextCompat.checkSelfPermission(requireContext(), permiso) == PackageManager.PERMISSION_GRANTED) {
+            abrirGaleria()
+        } else {
+            permisosGaleriaLauncher.launch(permiso)
         }
     }
 
@@ -226,8 +277,7 @@ class AgregarPublicacionFragment : Fragment() {
     }
 
     private fun abrirGaleria() {
-        val cantidadRestante = 3 - imagenesSeleccionadas.size
-        if (cantidadRestante > 0) {
+        if (3 - imagenesSeleccionadas.size > 0) {
             galeriaLauncher.launch("image/*")
         }
     }
@@ -235,20 +285,26 @@ class AgregarPublicacionFragment : Fragment() {
     private fun crearArchivoImagen(): File {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        return File.createTempFile(
-            "JPEG_${timeStamp}_",
-            ".jpg",
-            storageDir
-        )
+        return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
     }
 
     private fun actualizarVistaImagenes() {
-        if (imagenesSeleccionadas.isEmpty()) {
-            layoutImagenes.visibility = View.GONE
-        } else {
-            layoutImagenes.visibility = View.VISIBLE
-        }
+        layoutImagenes.visibility = if (imagenesSeleccionadas.isEmpty()) View.GONE else View.VISIBLE
         tvContadorImagenes.text = "${imagenesSeleccionadas.size}/3 imágenes"
+    }
+
+    private fun guardarBorrador() {
+        val titulo = etTitulo.text.toString().trim()
+        val contenido = etContenido.text.toString().trim()
+
+        if (titulo.isEmpty() && contenido.isEmpty() && imagenesSeleccionadas.isEmpty()) {
+            Toast.makeText(context, "No hay contenido para guardar", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // TODO: Guardar en base de datos local o SharedPreferences
+        Toast.makeText(context, "Borrador guardado", Toast.LENGTH_SHORT).show()
+        findNavController().navigateUp()
     }
 
     private fun publicarContenido() {
@@ -256,39 +312,11 @@ class AgregarPublicacionFragment : Fragment() {
         val contenido = etContenido.text.toString().trim()
 
         when {
-            titulo.isEmpty() -> {
-                Toast.makeText(context, "Agrega un título", Toast.LENGTH_SHORT).show()
-            }
-            contenido.isEmpty() -> {
-                Toast.makeText(context, "Agrega contenido", Toast.LENGTH_SHORT).show()
-            }
+            titulo.isEmpty() -> Toast.makeText(context, "Agrega un título", Toast.LENGTH_SHORT).show()
+            contenido.isEmpty() -> Toast.makeText(context, "Agrega contenido", Toast.LENGTH_SHORT).show()
             else -> {
-                // TODO: Aquí enviarías los datos al backend
-                Toast.makeText(
-                    context,
-                    "Publicando: $titulo con ${imagenesSeleccionadas.size} imagen(es)",
-                    Toast.LENGTH_SHORT
-                ).show()
-
-                // Ejemplo de lo que harías:
-                /*
-                val imagenesPaths = imagenesSeleccionadas.map { it.toString() }
-
-                viewModel.crearPublicacion(
-                    titulo = titulo,
-                    descripcion = contenido,
-                    imagenes = imagenesPaths
-                ).observe(viewLifecycleOwner) { result ->
-                    if (result.isSuccess) {
-                        Toast.makeText(context, "Publicación creada", Toast.LENGTH_SHORT).show()
-                        findNavController().navigateUp()
-                    } else {
-                        Toast.makeText(context, "Error al publicar", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                */
-
-                // Por ahora solo navegamos de vuelta
+                // TODO: Enviar al backend
+                Toast.makeText(context, "Publicando: $titulo con ${imagenesSeleccionadas.size} imagen(es)", Toast.LENGTH_SHORT).show()
                 findNavController().navigateUp()
             }
         }
