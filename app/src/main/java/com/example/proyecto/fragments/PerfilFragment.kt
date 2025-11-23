@@ -18,7 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.proyecto.R
-import com.example.proyecto.adapters.PublicacionesAdapter
+import com.example.proyecto.adapters.PublicacionesPerfilAdapter
 import com.example.proyecto.models.Publicacion
 import com.example.proyecto.network.RetrofitClient
 import com.example.proyecto.utils.SessionManager
@@ -30,7 +30,7 @@ class PerfilFragment : Fragment() {
     // RecyclerView principal
     private lateinit var recyclerView: RecyclerView
     private lateinit var headerAdapter: HeaderAdapter
-    private lateinit var publicacionesAdapter: PublicacionesAdapter
+    private lateinit var publicacionesAdapter: PublicacionesPerfilAdapter
 
     // Navegación inferior
     private lateinit var btnNavHome: ImageView
@@ -41,8 +41,10 @@ class PerfilFragment : Fragment() {
     private enum class TabActivo { PUBLICACIONES, FAVORITOS, BORRADORES }
     private var tabActual = TabActivo.PUBLICACIONES
 
-    private var todasPublicaciones = listOf<Publicacion>()
+    private var todasPublicaciones = mutableListOf<Publicacion>()
     private var publicacionesFavoritas = mutableSetOf<String>()
+    private var publicacionesBorradores = mutableListOf<Publicacion>()
+    private var idUsuarioActual: String = ""
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -55,6 +57,10 @@ class PerfilFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         sessionManager = SessionManager(requireContext())
+
+        // Obtener ID del usuario actual
+        val userData = sessionManager.getUserData()
+        idUsuarioActual = userData?.idUsuario?.toString() ?: "0"
 
         inicializarVistas(view)
         configurarRecyclerView()
@@ -90,9 +96,10 @@ class PerfilFragment : Fragment() {
             }
         )
 
-        // Crear publicaciones adapter
-        publicacionesAdapter = PublicacionesAdapter(
+        // Crear publicaciones adapter con opciones de editar/eliminar
+        publicacionesAdapter = PublicacionesPerfilAdapter(
             publicaciones = emptyList(),
+            idUsuarioActual = idUsuarioActual,
             onLikeClick = { publicacion ->
                 Toast.makeText(context, "Like en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
             },
@@ -100,13 +107,27 @@ class PerfilFragment : Fragment() {
                 Toast.makeText(context, "Dislike en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
             },
             onCommentClick = { publicacion ->
-                findNavController().navigate(R.id.action_perfilFragment_to_commentsFragment)
+                val bundle = Bundle().apply {
+                    putInt("idPublicacion", publicacion.id.toInt())
+                    putString("tituloPublicacion", publicacion.titulo)
+                }
+                findNavController().navigate(
+                    R.id.action_perfilFragment_to_commentsFragment,
+                    bundle
+                )
             },
             onFavoriteClick = { publicacion ->
                 toggleFavorito(publicacion)
             },
             onPublicacionClick = { publicacion ->
                 Toast.makeText(context, "Ver: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+            },
+            onEditarClick = { publicacion ->
+                // TODO: Implementar navegación a editar publicación
+                Toast.makeText(context, "Editar: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+            },
+            onEliminarClick = { publicacion ->
+                eliminarPublicacion(publicacion)
             }
         )
 
@@ -141,22 +162,27 @@ class PerfilFragment : Fragment() {
         when (tab) {
             TabActivo.PUBLICACIONES -> {
                 headerAdapter.actualizarTitulo("Mis Publicaciones")
-                mostrarPublicaciones(todasPublicaciones)
+                // Solo publicaciones del usuario actual
+                val misPublicaciones = todasPublicaciones.filter { it.usuarioId == idUsuarioActual }
+                mostrarPublicaciones(misPublicaciones)
             }
             TabActivo.FAVORITOS -> {
                 headerAdapter.actualizarTitulo("Mis Favoritos")
+                // Publicaciones favoritas (pueden ser de cualquier usuario)
                 val favoritos = todasPublicaciones.filter { publicacionesFavoritas.contains(it.id) }
                 mostrarPublicaciones(favoritos)
             }
             TabActivo.BORRADORES -> {
                 headerAdapter.actualizarTitulo("Mis Borradores")
-                mostrarPublicaciones(emptyList())
+                // Borradores del usuario actual
+                mostrarPublicaciones(publicacionesBorradores)
             }
         }
     }
 
     private fun cargarPublicaciones() {
-        todasPublicaciones = listOf(
+        // Publicaciones publicadas
+        todasPublicaciones = mutableListOf(
             Publicacion(
                 id = "1",
                 titulo = "Mi primera publicación",
@@ -166,8 +192,12 @@ class PerfilFragment : Fragment() {
                 likes = 45,
                 dislikes = 3,
                 comentarios = 12,
-                usuarioId = "user1",
-                usuarioNombre = "Tú"
+                favoritos = 5,
+                usuarioId = idUsuarioActual,
+                usuarioNombre = "Tú",
+                usuarioLike = false,
+                usuarioDislike = false,
+                usuarioFavorito = false
             ),
             Publicacion(
                 id = "2",
@@ -178,8 +208,12 @@ class PerfilFragment : Fragment() {
                 likes = 67,
                 dislikes = 5,
                 comentarios = 23,
-                usuarioId = "user1",
-                usuarioNombre = "Tú"
+                favoritos = 8,
+                usuarioId = "999",  // Publicación de otro usuario
+                usuarioNombre = "Juan Pérez",
+                usuarioLike = false,
+                usuarioDislike = false,
+                usuarioFavorito = false
             ),
             Publicacion(
                 id = "3",
@@ -190,8 +224,12 @@ class PerfilFragment : Fragment() {
                 likes = 34,
                 dislikes = 2,
                 comentarios = 8,
-                usuarioId = "user1",
-                usuarioNombre = "Tú"
+                favoritos = 3,
+                usuarioId = idUsuarioActual,
+                usuarioNombre = "Tú",
+                usuarioLike = false,
+                usuarioDislike = false,
+                usuarioFavorito = false
             ),
             Publicacion(
                 id = "4",
@@ -202,12 +240,68 @@ class PerfilFragment : Fragment() {
                 likes = 89,
                 dislikes = 7,
                 comentarios = 31,
-                usuarioId = "user1",
-                usuarioNombre = "Tú"
+                favoritos = 12,
+                usuarioId = "888",  // Publicación de otro usuario
+                usuarioNombre = "María López",
+                usuarioLike = false,
+                usuarioDislike = false,
+                usuarioFavorito = false
             )
         )
 
-        publicacionesFavoritas.addAll(listOf("2", "4"))
+        // Borradores (solo del usuario actual)
+        publicacionesBorradores = mutableListOf(
+            Publicacion(
+                id = "draft_1",
+                titulo = "Guía de Kotlin Coroutines",
+                descripcion = "Aprende a manejar operaciones asíncronas de forma eficiente. Este borrador necesita más detalles...",
+                imagenesUrl = listOf("gato1", "home"),
+                fecha = "Borrador guardado el 19 de nov. 2025",
+                likes = 0,
+                dislikes = 0,
+                comentarios = 0,
+                favoritos = 0,
+                usuarioId = idUsuarioActual,
+                usuarioNombre = "Tú",
+                usuarioLike = false,
+                usuarioDislike = false,
+                usuarioFavorito = false
+            ),
+            Publicacion(
+                id = "draft_2",
+                titulo = "Room Database Tutorial",
+                descripcion = "Persistencia local en Android con Room. [Incompleto]",
+                imagenesUrl = listOf("star"),
+                fecha = "Borrador guardado el 18 de nov. 2025",
+                likes = 0,
+                dislikes = 0,
+                comentarios = 0,
+                favoritos = 0,
+                usuarioId = idUsuarioActual,
+                usuarioNombre = "Tú",
+                usuarioLike = false,
+                usuarioDislike = false,
+                usuarioFavorito = false
+            ),
+            Publicacion(
+                id = "draft_3",
+                titulo = "Diseño Material 3",
+                descripcion = "Implementa Material You en tus aplicaciones Android...",
+                imagenesUrl = listOf("add", "buscar", "chat"),
+                fecha = "Borrador guardado el 17 de nov. 2025",
+                likes = 0,
+                dislikes = 0,
+                comentarios = 0,
+                favoritos = 0,
+                usuarioId = idUsuarioActual,
+                usuarioNombre = "Tú",
+                usuarioLike = false,
+                usuarioDislike = false,
+                usuarioFavorito = false
+            )
+        )
+
+        publicacionesFavoritas.addAll(listOf("2", "4"))  // Las de otros usuarios están en favoritos
         seleccionarTab(TabActivo.PUBLICACIONES)
     }
 
@@ -229,7 +323,47 @@ class PerfilFragment : Fragment() {
         }
     }
 
-    // Adapter para el header
+    private fun eliminarPublicacion(publicacion: Publicacion) {
+        // Determinar si es borrador o publicación
+        val esBorrador = publicacion.id.startsWith("draft_")
+
+        if (esBorrador) {
+            // Eliminar de borradores
+            publicacionesBorradores.removeAll { it.id == publicacion.id }
+            Toast.makeText(
+                context,
+                "Borrador \"${publicacion.titulo}\" eliminado",
+                Toast.LENGTH_SHORT
+            ).show()
+        } else {
+            // Eliminar de publicaciones
+            todasPublicaciones.removeAll { it.id == publicacion.id }
+            publicacionesFavoritas.remove(publicacion.id)
+            Toast.makeText(
+                context,
+                "\"${publicacion.titulo}\" eliminada correctamente",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        // Actualizar vista
+        seleccionarTab(tabActual)
+
+        // TODO: Aquí harías la llamada al API para eliminar del servidor
+        // lifecycleScope.launch {
+        //     try {
+        //         val endpoint = if (esBorrador) "borradores" else "publicaciones"
+        //         val response = RetrofitClient.api.eliminar(endpoint, publicacion.id.toInt())
+        //         if (response.isSuccessful) {
+        //             // Ya se eliminó localmente
+        //         }
+        //     } catch (e: Exception) {
+        //         Toast.makeText(context, "Error al eliminar", Toast.LENGTH_SHORT).show()
+        //     }
+        // }
+    }
+
+    // Adapter para el header (sin cambios)
     inner class HeaderAdapter(
         private val sessionManager: SessionManager,
         private val onEditarClick: () -> Unit,
@@ -268,7 +402,6 @@ class PerfilFragment : Fragment() {
         }
 
         override fun onBindViewHolder(holder: HeaderViewHolder, position: Int) {
-            // Cargar datos del usuario
             val userData = sessionManager.getUserData()
 
             if (userData != null) {
@@ -300,7 +433,6 @@ class PerfilFragment : Fragment() {
                 }
             }
 
-            // Configurar listeners
             holder.btnEditarPerfil.setOnClickListener { onEditarClick() }
             holder.btnCerrarSesion.setOnClickListener { onCerrarSesionClick() }
 
@@ -308,20 +440,15 @@ class PerfilFragment : Fragment() {
             holder.btnFavoritos.setOnClickListener { onTabClick(1) }
             holder.btnBorradores.setOnClickListener { onTabClick(2) }
 
-            // Actualizar estado de tabs
             actualizarEstiloTabs(holder)
-
-            // Actualizar título
             holder.tvTituloSeccion.text = tituloSeccion
         }
 
         private fun actualizarEstiloTabs(holder: HeaderViewHolder) {
-            // Reset todos
             resetearTab(holder.iconPublicaciones, holder.textPublicaciones)
             resetearTab(holder.iconFavoritos, holder.textFavoritos)
             resetearTab(holder.iconBorradores, holder.textBorradores)
 
-            // Activar seleccionado
             when (tabSeleccionado) {
                 0 -> activarTab(holder.iconPublicaciones, holder.textPublicaciones)
                 1 -> activarTab(holder.iconFavoritos, holder.textFavoritos)
