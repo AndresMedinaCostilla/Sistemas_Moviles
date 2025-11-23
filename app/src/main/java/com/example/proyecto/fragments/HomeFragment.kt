@@ -322,6 +322,13 @@ class HomeFragment : Fragment() {
                                 "$baseUrl$url"
                             }
 
+                            // ✅ CAMBIO: Construir URL completa de la foto de perfil del usuario
+                            val fotoPerfilUsuario = if (!pub.usuario?.foto_perfil.isNullOrEmpty()) {
+                                "$baseUrl${pub.usuario?.foto_perfil}"
+                            } else {
+                                null
+                            }
+
                             Publicacion(
                                 id = pub.id_publicacion.toString(),
                                 titulo = pub.titulo,
@@ -334,6 +341,7 @@ class HomeFragment : Fragment() {
                                 favoritos = pub.cantidad_favoritos,
                                 usuarioId = pub.usuario?.id_usuario.toString() ?: "",
                                 usuarioNombre = pub.usuario?.usuario ?: "Usuario",
+                                usuarioFoto = fotoPerfilUsuario, // ✅ NUEVO: Foto del usuario
                                 usuarioLike = false,
                                 usuarioDislike = false,
                                 usuarioFavorito = false

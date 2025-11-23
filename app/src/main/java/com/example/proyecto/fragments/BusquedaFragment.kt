@@ -173,6 +173,13 @@ class BusquedaFragment : Fragment() {
                             if (url.startsWith("http")) url else "$baseUrl$url"
                         }
 
+                        // ✅ CAMBIO: Construir URL completa de la foto de perfil del usuario
+                        val fotoPerfilUsuario = if (!pubResp.usuario?.foto_perfil.isNullOrEmpty()) {
+                            "$baseUrl${pubResp.usuario?.foto_perfil}"
+                        } else {
+                            null
+                        }
+
                         Publicacion(
                             id = pubResp.id_publicacion.toString(),
                             titulo = pubResp.titulo,
@@ -184,10 +191,11 @@ class BusquedaFragment : Fragment() {
                             comentarios = pubResp.cantidad_comentarios,
                             usuarioId = pubResp.usuario?.id_usuario?.toString() ?: "0",
                             usuarioNombre = if (pubResp.usuario != null) {
-                                "${pubResp.usuario.nombre} ${pubResp.usuario.apellido_paterno}"
+                                pubResp.usuario.usuario
                             } else {
                                 "Usuario"
                             },
+                            usuarioFoto = fotoPerfilUsuario, // ✅ NUEVO: Foto del usuario
                             favoritos = pubResp.cantidad_favoritos,
                             usuarioLike = false,
                             usuarioDislike = false,
