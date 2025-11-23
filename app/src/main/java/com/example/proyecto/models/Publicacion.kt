@@ -11,7 +11,7 @@ data class Publicacion(
     val comentarios: Int,
     val usuarioId: String,
     val usuarioNombre: String,
-
+    val usuarioFoto: String? = null,
 
     var favoritos: Int = 0,
     var usuarioLike: Boolean = false,

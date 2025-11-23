@@ -9,11 +9,12 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import com.bumptech.glide.Glide
 import com.example.proyecto.R
 import com.example.proyecto.models.Publicacion
 
 class PublicacionesAdapter(
-    var publicaciones: List<Publicacion>,  // ✅ Cambiado a 'var' sin 'private'
+    var publicaciones: List<Publicacion>,
     private val onLikeClick: (Publicacion) -> Unit,
     private val onDislikeClick: (Publicacion) -> Unit,
     private val onCommentClick: (Publicacion) -> Unit,
@@ -40,7 +41,19 @@ class PublicacionesAdapter(
         fun bind(publicacion: Publicacion) {
             // Configurar usuario
             txtUsuarioNombre.text = publicacion.usuarioNombre
-            imgUsuarioPerfil.setImageResource(R.drawable.user)
+
+            // ✅ NUEVO: Cargar foto de perfil del usuario con Glide
+            if (!publicacion.usuarioFoto.isNullOrEmpty()) {
+                Glide.with(itemView.context)
+                    .load(publicacion.usuarioFoto)
+                    .placeholder(R.drawable.user)
+                    .error(R.drawable.user)
+                    .circleCrop()
+                    .into(imgUsuarioPerfil)
+            } else {
+                imgUsuarioPerfil.setImageResource(R.drawable.user)
+            }
+
             txtTitulo.text = publicacion.titulo
             txtDescripcion.text = publicacion.descripcion
             txtFecha.text = publicacion.fecha
