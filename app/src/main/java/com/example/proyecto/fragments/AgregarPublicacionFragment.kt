@@ -22,17 +22,27 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.proyecto.R
 import com.example.proyecto.adapters.ImagenesAdapter
+import com.example.proyecto.network.RetrofitClient
+import com.example.proyecto.utils.SessionManager
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
 class AgregarPublicacionFragment : Fragment() {
 
+    private lateinit var sessionManager: SessionManager
     private lateinit var btnCancelar: ImageButton
     private lateinit var btnGaleria: ImageButton
     private lateinit var btnPublicar: Button
@@ -105,30 +115,27 @@ class AgregarPublicacionFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        sessionManager = SessionManager(requireContext())
+
         inicializarVistas(view)
         configurarRecyclerView()
         configurarListeners()
         configurarContadorCaracteres()
         configurarBackPressed()
 
-        // Restaurar estado si existe
         savedInstanceState?.let { restaurarEstado(it) }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        // Guardar imágenes
         val uriStrings = ArrayList(imagenesSeleccionadas.map { it.toString() })
         outState.putStringArrayList(KEY_IMAGENES, uriStrings)
-        // Guardar texto
         outState.putString(KEY_TITULO, etTitulo.text.toString())
         outState.putString(KEY_CONTENIDO, etContenido.text.toString())
-        // Guardar URI de foto temporal
         fotoUri?.let { outState.putString(KEY_FOTO_URI, it.toString()) }
     }
 
     private fun restaurarEstado(savedInstanceState: Bundle) {
-        // Restaurar imágenes
         savedInstanceState.getStringArrayList(KEY_IMAGENES)?.let { uriStrings ->
             imagenesSeleccionadas.clear()
             for (uriString in uriStrings) {
@@ -138,10 +145,8 @@ class AgregarPublicacionFragment : Fragment() {
             }
             actualizarVistaImagenes()
         }
-        // Restaurar texto
         savedInstanceState.getString(KEY_TITULO)?.let { etTitulo.setText(it) }
         savedInstanceState.getString(KEY_CONTENIDO)?.let { etContenido.setText(it) }
-        // Restaurar URI de foto
         savedInstanceState.getString(KEY_FOTO_URI)?.let { fotoUri = Uri.parse(it) }
     }
 
@@ -312,13 +317,105 @@ class AgregarPublicacionFragment : Fragment() {
         val contenido = etContenido.text.toString().trim()
 
         when {
-            titulo.isEmpty() -> Toast.makeText(context, "Agrega un título", Toast.LENGTH_SHORT).show()
-            contenido.isEmpty() -> Toast.makeText(context, "Agrega contenido", Toast.LENGTH_SHORT).show()
-            else -> {
-                // TODO: Enviar al backend
-                Toast.makeText(context, "Publicando: $titulo con ${imagenesSeleccionadas.size} imagen(es)", Toast.LENGTH_SHORT).show()
-                findNavController().navigateUp()
+            titulo.isEmpty() -> {
+                Toast.makeText(context, "Agrega un título", Toast.LENGTH_SHORT).show()
+                return
             }
+            contenido.isEmpty() -> {
+                Toast.makeText(context, "Agrega contenido", Toast.LENGTH_SHORT).show()
+                return
+            }
+        }
+
+        // Mostrar progreso
+        btnPublicar.isEnabled = false
+        btnPublicar.text = "Publicando..."
+
+        lifecycleScope.launch {
+            try {
+                val userId = sessionManager.getUserId()
+
+                println("🔍 DEBUG - userId: $userId")
+                println("🔍 DEBUG - titulo: $titulo")
+                println("🔍 DEBUG - contenido: $contenido")
+                println("🔍 DEBUG - imágenes seleccionadas: ${imagenesSeleccionadas.size}")
+
+                // Preparar datos
+                val idUsuarioBody = userId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                val tituloBody = titulo.toRequestBody("text/plain".toMediaTypeOrNull())
+                val descripcionBody = contenido.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                // Preparar imágenes
+                val imagenesParts = mutableListOf<MultipartBody.Part>()
+                for (uri in imagenesSeleccionadas) {
+                    val file = uriToFile(uri)
+                    if (file != null) {
+                        val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                        val part = MultipartBody.Part.createFormData("imagenes", file.name, requestFile)
+                        imagenesParts.add(part)
+                    }
+                }
+
+                // Enviar al servidor
+                val response = RetrofitClient.publicacionesApi.crearPublicacion(
+                    idUsuario = idUsuarioBody,
+                    titulo = tituloBody,
+                    descripcion = descripcionBody,
+                    imagenes = imagenesParts
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val responseBody = response.body()!!
+
+                    if (responseBody.success) {
+                        Toast.makeText(
+                            context,
+                            "Publicación creada exitosamente",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        findNavController().navigateUp()
+                    } else {
+                        Toast.makeText(
+                            context,
+                            responseBody.message,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Error al crear publicación: ${response.message()}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "Error: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+                e.printStackTrace()
+            } finally {
+                btnPublicar.isEnabled = true
+                btnPublicar.text = "PUBLICAR"
+            }
+        }
+    }
+
+    private fun uriToFile(uri: Uri): File? {
+        return try {
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
+            val tempFile = File.createTempFile("upload", ".jpg", requireContext().cacheDir)
+            val outputStream = FileOutputStream(tempFile)
+
+            inputStream?.copyTo(outputStream)
+            inputStream?.close()
+            outputStream.close()
+
+            tempFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 }

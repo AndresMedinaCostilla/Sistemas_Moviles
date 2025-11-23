@@ -17,6 +17,10 @@ import com.example.proyecto.adapters.PublicacionesAdapter
 import com.example.proyecto.models.Publicacion
 import com.example.proyecto.network.RetrofitClient
 import com.example.proyecto.utils.SessionManager
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class HomeFragment : Fragment() {
 
@@ -181,58 +185,72 @@ class HomeFragment : Fragment() {
     }
 
     private fun cargarPublicaciones() {
-        // DATOS DE EJEMPLO con múltiples imágenes
-        val publicacionesEjemplo = listOf(
-            Publicacion(
-                id = "1",
-                titulo = "Mi primera publicación",
-                descripcion = "Esta publicación tiene 3 imágenes. Desliza para ver más.",
-                imagenesUrl = listOf("gato1", "user", "star"), // 3 imágenes diferentes
-                fecha = "Creado el 20 de septiembre del 2025 a las 12:00 pm",
-                likes = 15,
-                dislikes = 2,
-                comentarios = 3,
-                usuarioId = "user1",
-                usuarioNombre = "Usuario1"
-            ),
-            Publicacion(
-                id = "2",
-                titulo = "Segunda publicación increíble",
-                descripcion = "Esta tiene solo 2 imágenes.",
-                imagenesUrl = listOf("home", "buscar"), // 2 imágenes
-                fecha = "Creado el 21 de septiembre del 2025 a las 3:30 pm",
-                likes = 42,
-                dislikes = 5,
-                comentarios = 8,
-                usuarioId = "user2",
-                usuarioNombre = "Usuario2"
-            ),
-            Publicacion(
-                id = "3",
-                titulo = "Explorando nuevas tecnologías",
-                descripcion = "Publicación con una sola imagen.",
-                imagenesUrl = listOf("gato1"), // 1 imagen
-                fecha = "Creado el 22 de septiembre del 2025 a las 9:15 am",
-                likes = 28,
-                dislikes = 1,
-                comentarios = 12,
-                usuarioId = "user3",
-                usuarioNombre = "Usuario3"
-            ),
-            Publicacion(
-                id = "4",
-                titulo = "Tutorial completo",
-                descripcion = "Otra publicación con 3 imágenes para explorar.",
-                imagenesUrl = listOf("add", "star", "like"), // 3 imágenes
-                fecha = "Creado el 22 de septiembre del 2025 a las 11:00 am",
-                likes = 67,
-                dislikes = 3,
-                comentarios = 19,
-                usuarioId = "user4",
-                usuarioNombre = "Usuario4"
-            )
-        )
+        lifecycleScope.launch {
+            try {
+                val response = RetrofitClient.publicacionesApi.obtenerPublicaciones()
 
-        adapter.updatePublicaciones(publicacionesEjemplo)
+                if (response.isSuccessful && response.body() != null) {
+                    val responseBody = response.body()!!
+
+                    if (responseBody.success) {
+                        val baseUrl = RetrofitClient.BASE_URL.removeSuffix("/")
+
+                        // Convertir publicaciones del servidor a tu modelo local
+                        val publicaciones = responseBody.data.map { pub ->
+                            // ✅ Construir URLs completas para las imágenes
+                            val imagenesCompletas = pub.imagenes.map { url ->
+                                "$baseUrl$url"
+                            }
+
+                            println("🔍 Publicación: ${pub.titulo}")
+                            println("   Imágenes URLs completas: $imagenesCompletas")
+
+                            Publicacion(
+                                id = pub.id_publicacion.toString(),
+                                titulo = pub.titulo,
+                                descripcion = pub.descripcion ?: "",
+                                imagenesUrl = imagenesCompletas, // ⚠️ URLs completas
+                                fecha = formatearFecha(pub.fecha_publicacion),
+                                likes = pub.cantidad_likes,
+                                dislikes = 0,
+                                comentarios = pub.cantidad_comentarios,
+                                usuarioId = pub.usuario?.id_usuario.toString() ?: "",
+                                usuarioNombre = pub.usuario?.usuario ?: "Usuario"
+                            )
+                        }
+
+                        adapter.updatePublicaciones(publicaciones)
+                        println("✅ ${publicaciones.size} publicaciones cargadas")
+                    } else {
+                        Toast.makeText(context, "No hay publicaciones", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Error al cargar publicaciones",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "Error: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun formatearFecha(fechaISO: String): String {
+        return try {
+            // Convertir fecha ISO del servidor a formato legible
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("dd 'de' MMMM 'del' yyyy 'a las' HH:mm", Locale("es", "MX"))
+            val date = inputFormat.parse(fechaISO)
+            "Creado el ${outputFormat.format(date)}"
+        } catch (e: Exception) {
+            "Fecha desconocida"
+        }
     }
 }

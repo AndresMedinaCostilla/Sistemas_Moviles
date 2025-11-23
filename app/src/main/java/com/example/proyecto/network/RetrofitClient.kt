@@ -39,4 +39,8 @@ object RetrofitClient {
     val perfilApi: PerfilApi by lazy {
         retrofit.create(PerfilApi::class.java)
     }
+
+    val publicacionesApi: PublicacionesApi by lazy {
+        retrofit.create(PublicacionesApi::class.java)
+    }
 }

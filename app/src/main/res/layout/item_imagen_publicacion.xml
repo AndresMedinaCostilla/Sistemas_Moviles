@@ -2,13 +2,24 @@
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#1A000000">
 
+    <!-- Imagen principal -->
     <ImageView
         android:id="@+id/imgPublicacion"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
         android:contentDescription="Imagen de publicación" />
+
+    <!-- Spinner de carga centrado -->
+    <ProgressBar
+        android:id="@+id/loadingSpinner"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:indeterminateDrawable="@drawable/loading_spinner"
+        android:visibility="visible" />
 
 </FrameLayout>

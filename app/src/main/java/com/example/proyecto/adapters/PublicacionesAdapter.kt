@@ -43,32 +43,35 @@ class PublicacionesAdapter(
             txtDislikes.text = publicacion.dislikes.toString()
             txtComments.text = publicacion.comentarios.toString()
 
-            // Convertir las URLs de String a recursos drawable (para datos de ejemplo)
-            val imagenesDrawable = publicacion.imagenesUrl.map { url ->
-                when (url) {
-                    "gato1" -> R.mipmap.gato_round
-                    "gato2" -> R.drawable.like // TEMPORAL: Reemplaza con tus imágenes reales
-                    "gato3" -> R.drawable.chat // TEMPORAL: Reemplaza con tus imágenes reales
-                    "user" -> R.drawable.user
-                    "home" -> R.drawable.home
-                    "star" -> R.drawable.star
-                    "dot" -> R.drawable.circle_background
-                    "add" -> R.drawable.add
-                    else -> R.mipmap.gato_round
-                }
+            // 🔍 DEBUG: Ver qué URLs estamos recibiendo
+            println("📋 Configurando publicación: ${publicacion.titulo}")
+            println("   - Imágenes (${publicacion.imagenesUrl.size}):")
+            publicacion.imagenesUrl.forEachIndexed { index, url ->
+                println("     [$index] = '$url'")
             }
 
-            // Configurar ViewPager2 con las imágenes
-            val imagenesAdapter = ImagenesPublicacionAdapter(imagenesDrawable)
-            viewPagerImagenes.adapter = imagenesAdapter
+            // ✅ Verificar si hay imágenes
+            if (publicacion.imagenesUrl.isEmpty()) {
+                // Si no hay imágenes, ocultar el ViewPager y los indicadores
+                viewPagerImagenes.visibility = View.GONE
+                layoutIndicadores.visibility = View.GONE
+                println("   ⚠️ No hay imágenes para esta publicación")
+            } else {
+                // Mostrar el ViewPager con las imágenes
+                viewPagerImagenes.visibility = View.VISIBLE
 
-            // Configurar indicadores de página (dots)
-            setupIndicadores(imagenesDrawable.size)
-            viewPagerImagenes.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                override fun onPageSelected(position: Int) {
-                    actualizarIndicadores(position)
-                }
-            })
+                // ✅ Usar el nuevo adapter que carga URLs
+                val imagenesAdapter = ImagenesPublicacionUrlAdapter(publicacion.imagenesUrl)
+                viewPagerImagenes.adapter = imagenesAdapter
+
+                // Configurar indicadores de página (dots)
+                setupIndicadores(publicacion.imagenesUrl.size)
+                viewPagerImagenes.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+                    override fun onPageSelected(position: Int) {
+                        actualizarIndicadores(position)
+                    }
+                })
+            }
 
             // Listeners
             btnLike.setOnClickListener { onLikeClick(publicacion) }
@@ -88,7 +91,7 @@ class PublicacionesAdapter(
 
             layoutIndicadores.visibility = View.VISIBLE
             val indicadores = arrayOfNulls<ImageView>(cantidad)
-            val layoutParams = LinearLayout.LayoutParams(8.dpToPx(), 8.dpToPx()) // Tamaño del dot
+            val layoutParams = LinearLayout.LayoutParams(8.dpToPx(), 8.dpToPx())
             layoutParams.setMargins(4, 0, 4, 0)
 
             for (i in indicadores.indices) {
@@ -96,7 +99,7 @@ class PublicacionesAdapter(
                 indicadores[i]?.setImageDrawable(
                     ContextCompat.getDrawable(
                         itemView.context,
-                        R.drawable.indicator_dot  // <-- CAMBIAR AQUÍ
+                        R.drawable.indicator_dot
                     )
                 )
                 indicadores[i]?.layoutParams = layoutParams
@@ -113,7 +116,6 @@ class PublicacionesAdapter(
             }
         }
 
-        // Función de extensión para convertir dp a pixels
         private fun Int.dpToPx(): Int {
             return (this * itemView.context.resources.displayMetrics.density).toInt()
         }
