@@ -192,12 +192,15 @@
         android:textColor="#000000" />
 
     <TextView
+        android:id="@+id/txtRegresar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="Regresar "
         android:textColor="#FFFFFF"
-        android:textSize="14sp" />
+        android:textSize="14sp"
+        android:clickable="true"
+        android:focusable="true" />
 
 
 </LinearLayout>
