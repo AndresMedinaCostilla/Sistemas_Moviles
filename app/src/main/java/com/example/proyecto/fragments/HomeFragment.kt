@@ -110,7 +110,22 @@ class HomeFragment : Fragment() {
                 manejarDislike(publicacion)
             },
             onCommentClick = { publicacion ->
-                findNavController().navigate(R.id.action_homeFragment_to_commentsFragment)
+                // Pasar el ID de la publicación al CommentsFragment
+                println("🔍 DEBUG - Navegando a comentarios:")
+                println("   ID Publicación: ${publicacion.id}")
+                println("   Título: ${publicacion.titulo}")
+
+                val bundle = Bundle().apply {
+                    putInt("idPublicacion", publicacion.id.toInt())
+                    putString("tituloPublicacion", publicacion.titulo)
+                }
+
+                println("   Bundle creado con keys: ${bundle.keySet().joinToString()}")
+
+                findNavController().navigate(
+                    R.id.action_homeFragment_to_commentsFragment,
+                    bundle
+                )
             },
             onFavoriteClick = { publicacion ->
                 manejarFavorito(publicacion)

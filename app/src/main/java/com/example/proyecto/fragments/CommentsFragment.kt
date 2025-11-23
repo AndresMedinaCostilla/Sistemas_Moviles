@@ -8,6 +8,7 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -15,6 +16,13 @@ import com.example.proyecto.R
 import com.example.proyecto.adapters.ComentariosAdapter
 import com.example.proyecto.models.Comentario
 import com.example.proyecto.models.Respuesta
+import com.example.proyecto.network.RetrofitClient
+import com.example.proyecto.network.CrearComentarioRequest
+import com.example.proyecto.network.LikeComentarioRequest
+import com.example.proyecto.utils.SessionManager
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class CommentsFragment : Fragment() {
 
@@ -23,6 +31,11 @@ class CommentsFragment : Fragment() {
     private lateinit var etComment: EditText
     private lateinit var btnSend: ImageButton
     private lateinit var btnBack: ImageButton
+    private lateinit var sessionManager: SessionManager
+
+    private var idUsuarioActual: Int = 0
+    private var idPublicacionActual: Int = 0
+    private var tituloPublicacion: String = "Comentarios"
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -34,19 +47,44 @@ class CommentsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Inicializar vistas
+        sessionManager = SessionManager(requireContext())
+
+        val userData = sessionManager.getUserData()
+        idUsuarioActual = userData?.idUsuario ?: 0
+
+        if (idUsuarioActual == 0) {
+            Toast.makeText(context, "Error: No hay sesión activa", Toast.LENGTH_LONG).show()
+            findNavController().navigateUp()
+            return
+        }
+
+        // ✅ Recibir idPublicacion desde los argumentos
+        idPublicacionActual = arguments?.getInt("idPublicacion", 0) ?: 0
+        tituloPublicacion = arguments?.getString("tituloPublicacion", "Comentarios") ?: "Comentarios"
+
+        println("🔍 DEBUG - Arguments recibidos:")
+        println("   idPublicacion: $idPublicacionActual")
+        println("   tituloPublicacion: $tituloPublicacion")
+        println("   Arguments bundle: ${arguments?.keySet()?.joinToString()}")
+
+        if (idPublicacionActual == 0) {
+            Toast.makeText(context, "Error: Publicación no válida (ID: $idPublicacionActual)", Toast.LENGTH_LONG).show()
+            println("❌ ERROR: idPublicacion es 0")
+            findNavController().navigateUp()
+            return
+        }
+
+        println("📖 Abriendo comentarios de publicación ID: $idPublicacionActual")
+
         recyclerComentarios = view.findViewById(R.id.recyclerComentarios)
         etComment = view.findViewById(R.id.etComment)
         btnSend = view.findViewById(R.id.btnSend)
         btnBack = view.findViewById(R.id.btnBack)
 
-        // Configurar RecyclerView
+
+
         setupRecyclerView()
-
-        // Configurar botones
         setupButtons()
-
-        // Cargar comentarios de ejemplo
         cargarComentarios()
     }
 
@@ -54,37 +92,10 @@ class CommentsFragment : Fragment() {
         adapter = ComentariosAdapter(
             comentarios = emptyList(),
             onLikeClick = { comentario ->
-                // Manejar like
-                Toast.makeText(context, "Like en comentario de ${comentario.usuarioNombre}", Toast.LENGTH_SHORT).show()
-                // TODO: Actualizar likes en la base de datos
+                manejarLikeComentario(comentario)
             },
             onSendReply = { comentario, textoRespuesta ->
-                // Manejar envío de respuesta
-                Toast.makeText(
-                    context,
-                    "Respuesta a ${comentario.usuarioNombre}: $textoRespuesta",
-                    Toast.LENGTH_SHORT
-                ).show()
-
-                // TODO: Enviar respuesta a la base de datos
-                /*
-                val nuevaRespuesta = Respuesta(
-                    id = generarIdUnico(),
-                    usuarioId = usuarioActualId,
-                    usuarioNombre = usuarioActualNombre,
-                    usuarioFoto = usuarioActualFoto,
-                    texto = textoRespuesta,
-                    fecha = obtenerFechaActual(),
-                    comentarioId = comentario.id
-                )
-
-                viewModel.agregarRespuesta(comentario.id, nuevaRespuesta).observe(viewLifecycleOwner) { success ->
-                    if (success) {
-                        // Recargar comentarios para mostrar la nueva respuesta
-                        cargarComentarios()
-                    }
-                }
-                */
+                enviarRespuesta(comentario, textoRespuesta)
             }
         )
 
@@ -93,159 +104,203 @@ class CommentsFragment : Fragment() {
     }
 
     private fun setupButtons() {
-        // Botón volver
         btnBack.setOnClickListener {
             findNavController().navigateUp()
         }
 
-        // Botón enviar comentario
         btnSend.setOnClickListener {
             val texto = etComment.text.toString().trim()
             if (texto.isNotEmpty()) {
-                // TODO: Enviar comentario a la base de datos
-                Toast.makeText(context, "Comentario enviado: $texto", Toast.LENGTH_SHORT).show()
-                etComment.text.clear()
-
-                // Aquí agregarías el nuevo comentario a la lista y actualizarías el adapter
-                /*
-                val nuevoComentario = Comentario(
-                    id = generarIdUnico(),
-                    usuarioId = usuarioActualId,
-                    usuarioNombre = usuarioActualNombre,
-                    usuarioFoto = usuarioActualFoto,
-                    texto = texto,
-                    fecha = obtenerFechaActual(),
-                    likes = 0,
-                    publicacionId = publicacionIdActual,
-                    respuestas = mutableListOf()
-                )
-
-                viewModel.agregarComentario(nuevoComentario).observe(viewLifecycleOwner) { success ->
-                    if (success) {
-                        cargarComentarios()
-                    }
-                }
-                */
+                enviarComentario(texto)
             } else {
                 Toast.makeText(context, "Escribe un comentario", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    // ==================== CARGAR COMENTARIOS ====================
+
     private fun cargarComentarios() {
-        // DATOS DE EJEMPLO - Reemplaza con tu consulta a la base de datos
-        val comentariosEjemplo = listOf(
-            Comentario(
-                id = "1",
-                usuarioId = "user1",
-                usuarioNombre = "María García",
-                usuarioFoto = "",
-                texto = "¡Excelente publicación! Me encantó el contenido, muy informativo y bien estructurado.",
-                fecha = "22 de nov. 2025, 2:30 PM",
-                likes = 15,
-                publicacionId = "pub1",
-                respuestas = mutableListOf(
-                    Respuesta(
-                        id = "r1",
-                        usuarioId = "user2",
-                        usuarioNombre = "Carlos Ruiz",
-                        usuarioFoto = "",
-                        texto = "Totalmente de acuerdo contigo María!",
-                        fecha = "22 de nov. 2025, 3:15 PM",
-                        comentarioId = "1"
-                    ),
-                    Respuesta(
-                        id = "r2",
-                        usuarioId = "user3",
-                        usuarioNombre = "Ana López",
-                        usuarioFoto = "",
-                        texto = "Sí, el autor hizo un gran trabajo explicando todo.",
-                        fecha = "22 de nov. 2025, 3:45 PM",
-                        comentarioId = "1"
-                    )
-                )
-            ),
-            Comentario(
-                id = "2",
-                usuarioId = "user4",
-                usuarioNombre = "Pedro Martínez",
-                usuarioFoto = "",
-                texto = "Interesante punto de vista, aunque discrepo en algunos detalles. ¿Podrías explicar más sobre...?",
-                fecha = "22 de nov. 2025, 4:00 PM",
-                likes = 8,
-                publicacionId = "pub1",
-                respuestas = mutableListOf(
-                    Respuesta(
-                        id = "r3",
-                        usuarioId = "user5",
-                        usuarioNombre = "Laura Fernández",
-                        usuarioFoto = "",
-                        texto = "También tengo esa duda, espero que el autor responda.",
-                        fecha = "22 de nov. 2025, 4:30 PM",
-                        comentarioId = "2"
-                    )
-                )
-            ),
-            Comentario(
-                id = "3",
-                usuarioId = "user6",
-                usuarioNombre = "Roberto Sánchez",
-                usuarioFoto = "",
-                texto = "Gracias por compartir, esto me ayudó mucho con mi proyecto.",
-                fecha = "22 de nov. 2025, 5:15 PM",
-                likes = 23,
-                publicacionId = "pub1",
-                respuestas = mutableListOf()
-            ),
-            Comentario(
-                id = "4",
-                usuarioId = "user7",
-                usuarioNombre = "Sofia Ramírez",
-                usuarioFoto = "",
-                texto = "¿Alguien tiene más información sobre este tema? Me gustaría profundizar más.",
-                fecha = "22 de nov. 2025, 6:00 PM",
-                likes = 5,
-                publicacionId = "pub1",
-                respuestas = mutableListOf(
-                    Respuesta(
-                        id = "r4",
-                        usuarioId = "user8",
-                        usuarioNombre = "Diego Torres",
-                        usuarioFoto = "",
-                        texto = "Te recomiendo buscar en la biblioteca, hay varios libros sobre esto.",
-                        fecha = "22 de nov. 2025, 6:20 PM",
-                        comentarioId = "4"
-                    ),
-                    Respuesta(
-                        id = "r5",
-                        usuarioId = "user9",
-                        usuarioNombre = "Valentina Cruz",
-                        usuarioFoto = "",
-                        texto = "También puedes ver el canal de YouTube 'TechExplained', tiene buenos videos.",
-                        fecha = "22 de nov. 2025, 6:45 PM",
-                        comentarioId = "4"
-                    ),
-                    Respuesta(
-                        id = "r6",
-                        usuarioId = "user1",
-                        usuarioNombre = "María García",
-                        usuarioFoto = "",
-                        texto = "¡Gracias por las recomendaciones!",
-                        fecha = "22 de nov. 2025, 7:00 PM",
-                        comentarioId = "4"
-                    )
-                )
-            )
-        )
+        lifecycleScope.launch {
+            try {
+                val response = RetrofitClient.comentariosApi.obtenerComentarios(idPublicacionActual)
 
-        // Actualizar adapter
-        adapter.updateComentarios(comentariosEjemplo)
+                if (response.isSuccessful && response.body() != null) {
+                    val comentariosResponse = response.body()!!.data
+                    val baseUrl = RetrofitClient.BASE_URL.removeSuffix("/")
 
-        // TODO: Cuando conectes a tu base de datos, reemplaza esto por:
-        /*
-        viewModel.obtenerComentarios(publicacionId).observe(viewLifecycleOwner) { comentarios ->
-            adapter.updateComentarios(comentarios)
+                    // Convertir a modelo local
+                    val comentarios = comentariosResponse.map { comentarioResp ->
+                        Comentario(
+                            id = comentarioResp.id_comentario.toString(),
+                            usuarioId = comentarioResp.id_usuario.toString(),
+                            usuarioNombre = comentarioResp.usuario,
+                            usuarioFoto = if (!comentarioResp.foto_perfil.isNullOrEmpty())
+                                "$baseUrl${comentarioResp.foto_perfil}" else null,
+                            texto = comentarioResp.descripcion,
+                            fecha = formatearFecha(comentarioResp.fecha_comentario),
+                            likes = comentarioResp.cantidad_likes,
+                            publicacionId = comentarioResp.id_publicacion.toString(),
+                            respuestas = comentarioResp.respuestas?.map { respResp ->
+                                Respuesta(
+                                    id = respResp.id_comentario.toString(),
+                                    usuarioId = respResp.id_usuario.toString(),
+                                    usuarioNombre = respResp.usuario,
+                                    usuarioFoto = if (!respResp.foto_perfil.isNullOrEmpty())
+                                        "$baseUrl${respResp.foto_perfil}" else null,
+                                    texto = respResp.descripcion,
+                                    fecha = formatearFecha(respResp.fecha_comentario),
+                                    comentarioId = respResp.id_comentario_padre.toString(),
+                                    likes = respResp.cantidad_likes
+                                )
+                            }?.toMutableList() ?: mutableListOf(),
+                            tieneLike = false
+                        )
+                    }
+
+                    adapter.updateComentarios(comentarios)
+
+                    // Cargar estado de likes
+                    cargarLikesUsuario(comentarios)
+
+                    println("✅ ${comentarios.size} comentarios cargados")
+                } else {
+                    Toast.makeText(context, "Error al cargar comentarios", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
         }
-        */
+    }
+
+    private fun cargarLikesUsuario(comentarios: List<Comentario>) {
+        lifecycleScope.launch {
+            try {
+                val response = RetrofitClient.comentariosApi.obtenerLikesUsuario(
+                    idUsuarioActual,
+                    idPublicacionActual
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val likesMap = response.body()!!.data
+
+                    // Actualizar estado de likes en comentarios
+                    comentarios.forEach { comentario ->
+                        comentario.tieneLike = likesMap[comentario.id] == true
+                    }
+
+                    adapter.notifyDataSetChanged()
+                }
+            } catch (e: Exception) {
+                println("❌ Error al cargar likes: ${e.message}")
+            }
+        }
+    }
+
+    // ==================== ENVIAR COMENTARIO ====================
+
+    private fun enviarComentario(texto: String) {
+        lifecycleScope.launch {
+            try {
+                val request = CrearComentarioRequest(
+                    id_publicacion = idPublicacionActual,
+                    id_usuario = idUsuarioActual,
+                    descripcion = texto,
+                    id_comentario_padre = null
+                )
+
+                val response = RetrofitClient.comentariosApi.crearComentario(request)
+
+                if (response.isSuccessful && response.body() != null) {
+                    Toast.makeText(context, "Comentario enviado", Toast.LENGTH_SHORT).show()
+                    etComment.text.clear()
+
+                    // Recargar comentarios
+                    cargarComentarios()
+                } else {
+                    Toast.makeText(context, "Error al enviar comentario", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ==================== ENVIAR RESPUESTA ====================
+
+    private fun enviarRespuesta(comentario: Comentario, textoRespuesta: String) {
+        lifecycleScope.launch {
+            try {
+                val request = CrearComentarioRequest(
+                    id_publicacion = idPublicacionActual,
+                    id_usuario = idUsuarioActual,
+                    descripcion = textoRespuesta,
+                    id_comentario_padre = comentario.id.toInt()
+                )
+
+                val response = RetrofitClient.comentariosApi.crearComentario(request)
+
+                if (response.isSuccessful && response.body() != null) {
+                    Toast.makeText(context, "Respuesta enviada", Toast.LENGTH_SHORT).show()
+
+                    // Recargar comentarios
+                    cargarComentarios()
+                } else {
+                    Toast.makeText(context, "Error al enviar respuesta", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ==================== MANEJAR LIKE ====================
+
+    private fun manejarLikeComentario(comentario: Comentario) {
+        lifecycleScope.launch {
+            try {
+                val request = LikeComentarioRequest(id_usuario = idUsuarioActual)
+
+                val response = RetrofitClient.comentariosApi.likeComentario(
+                    comentario.id.toInt(),
+                    request
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val data = response.body()!!.data
+
+                    if (data != null) {
+                        comentario.likes = data.likes
+                        comentario.tieneLike = data.tiene_like
+
+                        adapter.notifyDataSetChanged()
+
+                        val mensaje = if (data.tiene_like) "👍 Like" else "Like eliminado"
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Error al procesar like", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ==================== UTILIDADES ====================
+
+    private fun formatearFecha(fechaISO: String): String {
+        return try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("dd 'de' MMM yyyy, h:mm a", Locale("es", "MX"))
+            val date = inputFormat.parse(fechaISO)
+            outputFormat.format(date)
+        } catch (e: Exception) {
+            fechaISO
+        }
     }
 }

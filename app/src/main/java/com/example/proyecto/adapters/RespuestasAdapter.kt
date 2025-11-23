@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.proyecto.R
 import com.example.proyecto.models.Respuesta
 
@@ -24,8 +25,17 @@ class RespuestasAdapter(
             tvReplyTime.text = respuesta.fecha
             tvReplyText.text = respuesta.texto
 
-            // TODO: Cargar foto del usuario con Glide
-            // Glide.with(itemView.context).load(respuesta.usuarioFoto).into(ivReplyAvatar)
+            // ✅ Cargar foto del usuario con Glide
+            if (!respuesta.usuarioFoto.isNullOrEmpty()) {
+                Glide.with(itemView.context)
+                    .load(respuesta.usuarioFoto)
+                    .placeholder(R.drawable.user)
+                    .error(R.drawable.user)
+                    .circleCrop()
+                    .into(ivReplyAvatar)
+            } else {
+                ivReplyAvatar.setImageResource(R.drawable.user)
+            }
         }
     }
 

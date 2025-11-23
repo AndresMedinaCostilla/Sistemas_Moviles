@@ -10,15 +10,17 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.cardview.widget.CardView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.proyecto.R
 import com.example.proyecto.models.Comentario
 
 class ComentariosAdapter(
     private var comentarios: List<Comentario>,
     private val onLikeClick: (Comentario) -> Unit,
-    private val onSendReply: (Comentario, String) -> Unit  // Nuevo callback para enviar respuestas
+    private val onSendReply: (Comentario, String) -> Unit
 ) : RecyclerView.Adapter<ComentariosAdapter.ComentarioViewHolder>() {
 
     inner class ComentarioViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -33,8 +35,6 @@ class ComentariosAdapter(
         val ivArrowReplies: ImageView = itemView.findViewById(R.id.ivArrowReplies)
         val layoutReplies: LinearLayout = itemView.findViewById(R.id.layoutReplies)
         val recyclerReplies: RecyclerView = itemView.findViewById(R.id.recyclerReplies)
-
-        // Nuevos elementos para el input de respuesta
         val replyInputCard: CardView = itemView.findViewById(R.id.replyInputCard)
         val etReply: EditText = itemView.findViewById(R.id.etReply)
         val btnSendReply: ImageButton = itemView.findViewById(R.id.btnSendReply)
@@ -47,19 +47,39 @@ class ComentariosAdapter(
             tvCommentText.text = comentario.texto
             tvLikeCount.text = comentario.likes.toString()
 
-            // Configurar texto de respuestas
+            // ✅ Configurar estado visual del botón like
+            if (comentario.tieneLike) {
+                btnLike.setColorFilter(
+                    ContextCompat.getColor(itemView.context, R.color.like_activo)
+                )
+            } else {
+                btnLike.setColorFilter(
+                    ContextCompat.getColor(itemView.context, R.color.white)
+                )
+            }
+
+            // ✅ CAMBIO: Configurar texto de respuestas - SIEMPRE VISIBLE
             val cantidadRespuestas = comentario.respuestas.size
             tvRepliesCount.text = when {
-                cantidadRespuestas == 0 -> "Sin respuestas"
+                cantidadRespuestas == 0 -> "Responder"  // 🔥 Cambio aquí
                 cantidadRespuestas == 1 -> "1 respuesta"
                 else -> "$cantidadRespuestas respuestas"
             }
 
-            // Ocultar botón si no hay respuestas
-            btnToggleReplies.visibility = if (cantidadRespuestas > 0) View.VISIBLE else View.GONE
+            // ✅ CAMBIO: SIEMPRE mostrar el botón (antes estaba oculto)
+            btnToggleReplies.visibility = View.VISIBLE
 
-            // TODO: Cargar foto del usuario con Glide
-            // Glide.with(itemView.context).load(comentario.usuarioFoto).into(ivUserAvatar)
+            // ✅ Cargar foto del usuario con Glide
+            if (!comentario.usuarioFoto.isNullOrEmpty()) {
+                Glide.with(itemView.context)
+                    .load(comentario.usuarioFoto)
+                    .placeholder(R.drawable.user)
+                    .error(R.drawable.user)
+                    .circleCrop()
+                    .into(ivUserAvatar)
+            } else {
+                ivUserAvatar.setImageResource(R.drawable.user)
+            }
 
             // Click en like
             btnLike.setOnClickListener {
@@ -77,35 +97,40 @@ class ComentariosAdapter(
                 if (textoRespuesta.isNotEmpty()) {
                     onSendReply(comentario, textoRespuesta)
                     etReply.text.clear()
-                    Toast.makeText(itemView.context, "Respuesta enviada", Toast.LENGTH_SHORT).show()
-                    // TODO: Actualizar la lista de respuestas desde la base de datos
                 } else {
                     Toast.makeText(itemView.context, "Escribe una respuesta", Toast.LENGTH_SHORT).show()
                 }
             }
 
-            // Estado inicial
+            // Estado inicial - respuestas ocultas
             layoutReplies.visibility = View.GONE
             ivArrowReplies.rotation = 90f
+            respuestasVisible = false
         }
 
         private fun toggleRespuestas(comentario: Comentario) {
             respuestasVisible = !respuestasVisible
 
             if (respuestasVisible) {
-                // Mostrar respuestas e input
+                // Mostrar sección de respuestas e input
                 layoutReplies.visibility = View.VISIBLE
-                ivArrowReplies.rotation = -90f // Flecha hacia arriba
+                ivArrowReplies.rotation = -90f
 
-                // Configurar RecyclerView de respuestas
-                val respuestasAdapter = RespuestasAdapter(comentario.respuestas)
-                recyclerReplies.layoutManager = LinearLayoutManager(itemView.context)
-                recyclerReplies.adapter = respuestasAdapter
+                // ✅ Solo configurar RecyclerView si HAY respuestas
+                if (comentario.respuestas.isNotEmpty()) {
+                    recyclerReplies.visibility = View.VISIBLE
+                    val respuestasAdapter = RespuestasAdapter(comentario.respuestas)
+                    recyclerReplies.layoutManager = LinearLayoutManager(itemView.context)
+                    recyclerReplies.adapter = respuestasAdapter
+                } else {
+                    // Si no hay respuestas, ocultar el RecyclerView
+                    recyclerReplies.visibility = View.GONE
+                }
             } else {
                 // Ocultar respuestas e input
                 layoutReplies.visibility = View.GONE
-                ivArrowReplies.rotation = 90f // Flecha hacia abajo
-                etReply.text.clear() // Limpiar el input al cerrar
+                ivArrowReplies.rotation = 90f
+                etReply.text.clear()
             }
         }
     }

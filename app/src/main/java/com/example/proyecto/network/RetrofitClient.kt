@@ -44,8 +44,11 @@ object RetrofitClient {
         retrofit.create(PublicacionesApi::class.java)
     }
 
-
     val reaccionesApi: ReaccionesApi by lazy {
         retrofit.create(ReaccionesApi::class.java)
+    }
+
+    val comentariosApi: ComentariosApi by lazy {
+        retrofit.create(ComentariosApi::class.java)
     }
 }
