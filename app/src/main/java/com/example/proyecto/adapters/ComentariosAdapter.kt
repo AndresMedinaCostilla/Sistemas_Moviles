@@ -3,10 +3,13 @@ package com.example.proyecto.adapters
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
+import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.proyecto.R
@@ -14,7 +17,8 @@ import com.example.proyecto.models.Comentario
 
 class ComentariosAdapter(
     private var comentarios: List<Comentario>,
-    private val onLikeClick: (Comentario) -> Unit
+    private val onLikeClick: (Comentario) -> Unit,
+    private val onSendReply: (Comentario, String) -> Unit  // Nuevo callback para enviar respuestas
 ) : RecyclerView.Adapter<ComentariosAdapter.ComentarioViewHolder>() {
 
     inner class ComentarioViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -29,6 +33,11 @@ class ComentariosAdapter(
         val ivArrowReplies: ImageView = itemView.findViewById(R.id.ivArrowReplies)
         val layoutReplies: LinearLayout = itemView.findViewById(R.id.layoutReplies)
         val recyclerReplies: RecyclerView = itemView.findViewById(R.id.recyclerReplies)
+
+        // Nuevos elementos para el input de respuesta
+        val replyInputCard: CardView = itemView.findViewById(R.id.replyInputCard)
+        val etReply: EditText = itemView.findViewById(R.id.etReply)
+        val btnSendReply: ImageButton = itemView.findViewById(R.id.btnSendReply)
 
         private var respuestasVisible = false
 
@@ -59,27 +68,45 @@ class ComentariosAdapter(
 
             // Toggle respuestas
             btnToggleReplies.setOnClickListener {
-                respuestasVisible = !respuestasVisible
+                toggleRespuestas(comentario)
+            }
 
-                if (respuestasVisible) {
-                    // Mostrar respuestas
-                    layoutReplies.visibility = View.VISIBLE
-                    ivArrowReplies.rotation = -90f // Flecha hacia arriba
-
-                    // Configurar RecyclerView de respuestas
-                    val respuestasAdapter = RespuestasAdapter(comentario.respuestas)
-                    recyclerReplies.layoutManager = LinearLayoutManager(itemView.context)
-                    recyclerReplies.adapter = respuestasAdapter
+            // Enviar respuesta
+            btnSendReply.setOnClickListener {
+                val textoRespuesta = etReply.text.toString().trim()
+                if (textoRespuesta.isNotEmpty()) {
+                    onSendReply(comentario, textoRespuesta)
+                    etReply.text.clear()
+                    Toast.makeText(itemView.context, "Respuesta enviada", Toast.LENGTH_SHORT).show()
+                    // TODO: Actualizar la lista de respuestas desde la base de datos
                 } else {
-                    // Ocultar respuestas
-                    layoutReplies.visibility = View.GONE
-                    ivArrowReplies.rotation = 90f // Flecha hacia abajo
+                    Toast.makeText(itemView.context, "Escribe una respuesta", Toast.LENGTH_SHORT).show()
                 }
             }
 
             // Estado inicial
             layoutReplies.visibility = View.GONE
             ivArrowReplies.rotation = 90f
+        }
+
+        private fun toggleRespuestas(comentario: Comentario) {
+            respuestasVisible = !respuestasVisible
+
+            if (respuestasVisible) {
+                // Mostrar respuestas e input
+                layoutReplies.visibility = View.VISIBLE
+                ivArrowReplies.rotation = -90f // Flecha hacia arriba
+
+                // Configurar RecyclerView de respuestas
+                val respuestasAdapter = RespuestasAdapter(comentario.respuestas)
+                recyclerReplies.layoutManager = LinearLayoutManager(itemView.context)
+                recyclerReplies.adapter = respuestasAdapter
+            } else {
+                // Ocultar respuestas e input
+                layoutReplies.visibility = View.GONE
+                ivArrowReplies.rotation = 90f // Flecha hacia abajo
+                etReply.text.clear() // Limpiar el input al cerrar
+            }
         }
     }
 

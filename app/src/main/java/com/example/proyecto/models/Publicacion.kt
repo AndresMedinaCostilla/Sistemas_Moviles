@@ -7,6 +7,7 @@ data class Publicacion (
     val imagenUrl: String = "",
     val fecha: String = "",
     val likes: Int = 0,
+    val dislikes: Int = 0,  // Nuevo campo
     val comentarios: Int = 0,
     val usuarioId: String = "",
     val usuarioNombre: String = ""

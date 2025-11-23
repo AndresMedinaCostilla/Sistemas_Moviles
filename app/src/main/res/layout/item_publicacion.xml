@@ -77,7 +77,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Contenedor de acciones (likes, comentarios, favoritos) -->
+        <!-- Contenedor de acciones (likes, dislikes, comentarios, favoritos) -->
         <LinearLayout
             android:id="@+id/layoutAcciones"
             android:layout_width="wrap_content"
@@ -105,6 +105,30 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="10"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:layout_marginStart="6dp"
+                android:layout_gravity="center_vertical" />
+
+            <!-- Dislike (ícono de like rotado 180°) -->
+            <ImageView
+                android:id="@+id/btnDislike"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="16dp"
+                android:src="@drawable/like"
+                android:rotation="180"
+                android:tint="#FFFFFF"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Dislike" />
+
+            <TextView
+                android:id="@+id/txtDislikes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2"
                 android:textColor="#FFFFFF"
                 android:textSize="14sp"
                 android:layout_marginStart="6dp"

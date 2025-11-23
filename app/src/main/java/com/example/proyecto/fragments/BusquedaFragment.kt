@@ -75,6 +75,10 @@ class BusquedaFragment : Fragment() {
                 Toast.makeText(context, "Like en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
                 // TODO: Actualizar en la base de datos
             },
+            onDislikeClick = { publicacion ->
+                Toast.makeText(context, "Dislike en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+                // TODO: Actualizar en la base de datos
+            },
             onCommentClick = { publicacion ->
                 // Navegar a comentarios
                 findNavController().navigate(R.id.action_busquedaFragment_to_commentsFragment)
@@ -206,6 +210,7 @@ class BusquedaFragment : Fragment() {
                 imagenUrl = "",
                 fecha = "20 de nov. 2025, 10:00 AM",
                 likes = 45,
+                dislikes = 3,
                 comentarios = 12,
                 usuarioId = "user1",
                 usuarioNombre = "Ana Desarrolladora"
@@ -217,6 +222,7 @@ class BusquedaFragment : Fragment() {
                 imagenUrl = "",
                 fecha = "21 de nov. 2025, 2:30 PM",
                 likes = 67,
+                dislikes = 5,
                 comentarios = 23,
                 usuarioId = "user2",
                 usuarioNombre = "Carlos Tech"
@@ -228,6 +234,7 @@ class BusquedaFragment : Fragment() {
                 imagenUrl = "",
                 fecha = "21 de nov. 2025, 5:15 PM",
                 likes = 34,
+                dislikes = 2,
                 comentarios = 8,
                 usuarioId = "user3",
                 usuarioNombre = "María Backend"
@@ -239,6 +246,7 @@ class BusquedaFragment : Fragment() {
                 imagenUrl = "",
                 fecha = "22 de nov. 2025, 9:00 AM",
                 likes = 89,
+                dislikes = 7,
                 comentarios = 31,
                 usuarioId = "user4",
                 usuarioNombre = "Luis Arquitecto"
@@ -250,6 +258,7 @@ class BusquedaFragment : Fragment() {
                 imagenUrl = "",
                 fecha = "22 de nov. 2025, 11:45 AM",
                 likes = 52,
+                dislikes = 4,
                 comentarios = 15,
                 usuarioId = "user1",
                 usuarioNombre = "Ana Desarrolladora"
@@ -261,6 +270,7 @@ class BusquedaFragment : Fragment() {
                 imagenUrl = "",
                 fecha = "22 de nov. 2025, 3:20 PM",
                 likes = 78,
+                dislikes = 6,
                 comentarios = 19,
                 usuarioId = "user5",
                 usuarioNombre = "Pedro Network"
@@ -269,17 +279,5 @@ class BusquedaFragment : Fragment() {
 
         // Simular algunos favoritos iniciales (opcional)
         publicacionesFavoritas.addAll(listOf("2", "4"))
-
-        // TODO: Cuando conectes a tu base de datos:
-        /*
-        viewModel.obtenerPublicaciones().observe(viewLifecycleOwner) { publicaciones ->
-            todasLasPublicaciones = publicaciones
-            actualizarResultados(etBuscar.text.toString())
-        }
-
-        viewModel.obtenerFavoritos().observe(viewLifecycleOwner) { favoritos ->
-            publicacionesFavoritas = favoritos.toMutableSet()
-        }
-        */
     }
 }

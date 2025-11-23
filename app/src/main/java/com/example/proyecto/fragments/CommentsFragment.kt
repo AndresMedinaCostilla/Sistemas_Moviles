@@ -57,6 +57,34 @@ class CommentsFragment : Fragment() {
                 // Manejar like
                 Toast.makeText(context, "Like en comentario de ${comentario.usuarioNombre}", Toast.LENGTH_SHORT).show()
                 // TODO: Actualizar likes en la base de datos
+            },
+            onSendReply = { comentario, textoRespuesta ->
+                // Manejar envío de respuesta
+                Toast.makeText(
+                    context,
+                    "Respuesta a ${comentario.usuarioNombre}: $textoRespuesta",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                // TODO: Enviar respuesta a la base de datos
+                /*
+                val nuevaRespuesta = Respuesta(
+                    id = generarIdUnico(),
+                    usuarioId = usuarioActualId,
+                    usuarioNombre = usuarioActualNombre,
+                    usuarioFoto = usuarioActualFoto,
+                    texto = textoRespuesta,
+                    fecha = obtenerFechaActual(),
+                    comentarioId = comentario.id
+                )
+
+                viewModel.agregarRespuesta(comentario.id, nuevaRespuesta).observe(viewLifecycleOwner) { success ->
+                    if (success) {
+                        // Recargar comentarios para mostrar la nueva respuesta
+                        cargarComentarios()
+                    }
+                }
+                */
             }
         )
 
@@ -79,6 +107,25 @@ class CommentsFragment : Fragment() {
                 etComment.text.clear()
 
                 // Aquí agregarías el nuevo comentario a la lista y actualizarías el adapter
+                /*
+                val nuevoComentario = Comentario(
+                    id = generarIdUnico(),
+                    usuarioId = usuarioActualId,
+                    usuarioNombre = usuarioActualNombre,
+                    usuarioFoto = usuarioActualFoto,
+                    texto = texto,
+                    fecha = obtenerFechaActual(),
+                    likes = 0,
+                    publicacionId = publicacionIdActual,
+                    respuestas = mutableListOf()
+                )
+
+                viewModel.agregarComentario(nuevoComentario).observe(viewLifecycleOwner) { success ->
+                    if (success) {
+                        cargarComentarios()
+                    }
+                }
+                */
             } else {
                 Toast.makeText(context, "Escribe un comentario", Toast.LENGTH_SHORT).show()
             }

@@ -182,6 +182,49 @@
                 android:layout_height="wrap_content"
                 android:nestedScrollingEnabled="false" />
 
+            <!-- Input para responder al comentario -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/replyInputCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:cardBackgroundColor="#202020"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="8dp"
+                    android:gravity="center_vertical">
+
+                    <EditText
+                        android:id="@+id/etReply"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="Escribe una respuesta..."
+                        android:textColor="#FFFFFF"
+                        android:textColorHint="#AAAAAA"
+                        android:background="@null"
+                        android:padding="8dp"
+                        android:maxLines="3"
+                        android:textSize="13sp" />
+
+                    <ImageButton
+                        android:id="@+id/btnSendReply"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="8dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Enviar respuesta"
+                        android:src="@drawable/send"
+                        android:tint="#8EE5E6" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
         </LinearLayout>
 
     </LinearLayout>

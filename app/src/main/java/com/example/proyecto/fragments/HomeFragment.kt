@@ -21,6 +21,7 @@ class HomeFragment : Fragment() {
     private lateinit var btnHome: ImageView
     private lateinit var btnAdd: ImageView
     private lateinit var btnSearch: ImageView
+    private lateinit var imgUserIcon: ImageView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -37,12 +38,14 @@ class HomeFragment : Fragment() {
         btnHome = view.findViewById(R.id.btnHome)
         btnAdd = view.findViewById(R.id.btnAdd)
         btnSearch = view.findViewById(R.id.btnSearch)
+        imgUserIcon = view.findViewById(R.id.imgUserIcon)
 
         // Configurar RecyclerView
         setupRecyclerView()
 
         // Configurar listeners de navegación
         setupBottomNavigation()
+        setupTopNavigation()
 
         // Cargar publicaciones (datos de ejemplo)
         cargarPublicaciones()
@@ -54,6 +57,11 @@ class HomeFragment : Fragment() {
             onLikeClick = { publicacion ->
                 // Manejar like
                 Toast.makeText(context, "Like en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+                // TODO: Actualizar en la base de datos
+            },
+            onDislikeClick = { publicacion ->
+                // Manejar dislike
+                Toast.makeText(context, "Dislike en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
                 // TODO: Actualizar en la base de datos
             },
             onCommentClick = { publicacion ->
@@ -96,6 +104,14 @@ class HomeFragment : Fragment() {
         }
     }
 
+    private fun setupTopNavigation() {
+        imgUserIcon.setOnClickListener {
+            // Navegar a perfil. Asumiendo que el ID de la acción es 'action_homeFragment_to_perfilFragment'
+            findNavController().navigate(R.id.action_homeFragment_to_perfilFragment)
+            Toast.makeText(context, "Perfil", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun cargarPublicaciones() {
         // DATOS DE EJEMPLO - Reemplaza esto con tu consulta a la base de datos
         val publicacionesEjemplo = listOf(
@@ -106,6 +122,7 @@ class HomeFragment : Fragment() {
                 imagenUrl = "",
                 fecha = "Creado el 20 de septiembre del 2025 a las 12:00 pm",
                 likes = 15,
+                dislikes = 2,
                 comentarios = 3,
                 usuarioId = "user1",
                 usuarioNombre = "Usuario1"
@@ -117,6 +134,7 @@ class HomeFragment : Fragment() {
                 imagenUrl = "",
                 fecha = "Creado el 21 de septiembre del 2025 a las 3:30 pm",
                 likes = 42,
+                dislikes = 5,
                 comentarios = 8,
                 usuarioId = "user2",
                 usuarioNombre = "Usuario2"
@@ -128,6 +146,7 @@ class HomeFragment : Fragment() {
                 imagenUrl = "",
                 fecha = "Creado el 22 de septiembre del 2025 a las 9:15 am",
                 likes = 28,
+                dislikes = 1,
                 comentarios = 12,
                 usuarioId = "user3",
                 usuarioNombre = "Usuario3"

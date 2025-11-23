@@ -12,6 +12,7 @@ import com.example.proyecto.models.Publicacion
 class PublicacionesAdapter(
     private var publicaciones: List<Publicacion>,
     private val onLikeClick: (Publicacion) -> Unit,
+    private val onDislikeClick: (Publicacion) -> Unit,  // Nuevo callback
     private val onCommentClick: (Publicacion) -> Unit,
     private val onFavoriteClick: (Publicacion) -> Unit,
     private val onPublicacionClick: (Publicacion) -> Unit
@@ -23,8 +24,10 @@ class PublicacionesAdapter(
         val txtDescripcion: TextView = itemView.findViewById(R.id.txtDescripcion)
         val txtFecha: TextView = itemView.findViewById(R.id.txtFecha)
         val txtLikes: TextView = itemView.findViewById(R.id.txtLikes)
+        val txtDislikes: TextView = itemView.findViewById(R.id.txtDislikes)  // Nuevo
         val txtComments: TextView = itemView.findViewById(R.id.txtComments)
         val btnLike: ImageView = itemView.findViewById(R.id.btnLike)
+        val btnDislike: ImageView = itemView.findViewById(R.id.btnDislike)  // Nuevo
         val btnComment: ImageView = itemView.findViewById(R.id.btnComment)
         val btnFavorite: ImageView = itemView.findViewById(R.id.btnFavorite)
 
@@ -33,6 +36,7 @@ class PublicacionesAdapter(
             txtDescripcion.text = publicacion.descripcion
             txtFecha.text = publicacion.fecha
             txtLikes.text = publicacion.likes.toString()
+            txtDislikes.text = publicacion.dislikes.toString()  // Nuevo
             txtComments.text = publicacion.comentarios.toString()
 
             // TODO: Cargar imagen con Glide o Picasso cuando conectes a la BD
@@ -40,6 +44,7 @@ class PublicacionesAdapter(
 
             // Listeners
             btnLike.setOnClickListener { onLikeClick(publicacion) }
+            btnDislike.setOnClickListener { onDislikeClick(publicacion) }  // Nuevo
             btnComment.setOnClickListener { onCommentClick(publicacion) }
             btnFavorite.setOnClickListener { onFavoriteClick(publicacion) }
             itemView.setOnClickListener { onPublicacionClick(publicacion) }
