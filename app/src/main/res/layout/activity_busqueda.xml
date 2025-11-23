@@ -93,19 +93,19 @@
 
     </LinearLayout>
 
-    <!-- ✅ NUEVO: ProgressBar con tu spinner personalizado -->
+    <!-- ProgressBar con spinner personalizado -->
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="60dp"
         android:layout_height="60dp"
         android:indeterminateDrawable="@drawable/loading_spinner"
         android:visibility="gone"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/searchBar"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- RecyclerView para resultados (SCROLLEABLE) -->
+    <!-- RecyclerView para resultados -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerResultados"
         android:layout_width="match_parent"
@@ -128,7 +128,7 @@
         android:orientation="vertical"
         android:gravity="center"
         android:visibility="gone"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/searchBar"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -153,5 +153,17 @@
             android:paddingEnd="32dp" />
 
     </LinearLayout>
+
+    <!-- ✅ NUEVO: Vista de sin conexión (incluye el layout completo) -->
+    <include
+        android:id="@+id/layoutSinConexion"
+        layout="@layout/layout_sin_conexion"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

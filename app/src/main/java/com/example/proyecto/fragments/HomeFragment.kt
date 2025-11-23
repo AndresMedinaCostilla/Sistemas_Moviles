@@ -7,6 +7,8 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.ProgressBar
+import android.widget.Button
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -19,6 +21,7 @@ import com.example.proyecto.network.RetrofitClient
 import com.example.proyecto.network.ReaccionRequest
 import com.example.proyecto.network.FavoritoRequest
 import com.example.proyecto.utils.SessionManager
+import com.example.proyecto.utils.NetworkUtils
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -34,6 +37,10 @@ class HomeFragment : Fragment() {
     private lateinit var imgUserIcon: ImageView
     private lateinit var txtUsername: TextView
 
+    private lateinit var layoutSinConexion: View
+    private lateinit var progressBar: ProgressBar
+    private lateinit var btnReintentar: Button
+
     private lateinit var sessionManager: SessionManager
     private var idUsuarioActual: Int = 0
 
@@ -46,6 +53,11 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Inicializar vistas
+        layoutSinConexion = view.findViewById(R.id.layoutSinConexion)
+        progressBar = view.findViewById(R.id.progressBar)
+        btnReintentar = view.findViewById(R.id.btnReintentar)
 
         sessionManager = SessionManager(requireContext())
 
@@ -69,7 +81,14 @@ class HomeFragment : Fragment() {
         setupRecyclerView()
         setupBottomNavigation()
         setupTopNavigation()
-        cargarPublicaciones()
+
+        // Configurar botón de reintentar
+        btnReintentar.setOnClickListener {
+            verificarConexionYCargar()
+        }
+
+        // Verificar conexión y cargar
+        verificarConexionYCargar()
     }
 
     private fun setupUserInfo() {
@@ -110,7 +129,6 @@ class HomeFragment : Fragment() {
                 manejarDislike(publicacion)
             },
             onCommentClick = { publicacion ->
-                // Pasar el ID de la publicación al CommentsFragment
                 println("🔍 DEBUG - Navegando a comentarios:")
                 println("   ID Publicación: ${publicacion.id}")
                 println("   Título: ${publicacion.titulo}")
@@ -161,10 +179,12 @@ class HomeFragment : Fragment() {
 
     // ==================== MANEJO DE REACCIONES ====================
 
-    /**
-     * Maneja el click en el botón Like
-     */
     private fun manejarLike(publicacion: Publicacion) {
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         lifecycleScope.launch {
             try {
                 val idPublicacion = publicacion.id.toInt()
@@ -182,13 +202,11 @@ class HomeFragment : Fragment() {
                     val data = response.body()!!.data
 
                     if (data != null) {
-                        // Actualizar modelo local
                         publicacion.likes = data.likes
                         publicacion.dislikes = data.dislikes
                         publicacion.usuarioLike = data.reaccion_usuario == "like"
                         publicacion.usuarioDislike = data.reaccion_usuario == "dislike"
 
-                        // Notificar al adapter del cambio específico
                         val position = adapter.publicaciones.indexOf(publicacion)
                         if (position != -1) {
                             adapter.notifyItemChanged(position)
@@ -210,10 +228,12 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /**
-     * Maneja el click en el botón Dislike
-     */
     private fun manejarDislike(publicacion: Publicacion) {
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         lifecycleScope.launch {
             try {
                 val idPublicacion = publicacion.id.toInt()
@@ -231,13 +251,11 @@ class HomeFragment : Fragment() {
                     val data = response.body()!!.data
 
                     if (data != null) {
-                        // Actualizar modelo local
                         publicacion.likes = data.likes
                         publicacion.dislikes = data.dislikes
                         publicacion.usuarioLike = data.reaccion_usuario == "like"
                         publicacion.usuarioDislike = data.reaccion_usuario == "dislike"
 
-                        // Notificar al adapter del cambio específico
                         val position = adapter.publicaciones.indexOf(publicacion)
                         if (position != -1) {
                             adapter.notifyItemChanged(position)
@@ -259,10 +277,12 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /**
-     * Maneja el click en el botón Favorito
-     */
     private fun manejarFavorito(publicacion: Publicacion) {
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         lifecycleScope.launch {
             try {
                 val idPublicacion = publicacion.id.toInt()
@@ -277,11 +297,9 @@ class HomeFragment : Fragment() {
                     val data = response.body()!!.data
 
                     if (data != null) {
-                        // Actualizar modelo local
                         publicacion.favoritos = data.favoritos
                         publicacion.usuarioFavorito = data.es_favorito
 
-                        // Notificar al adapter del cambio específico
                         val position = adapter.publicaciones.indexOf(publicacion)
                         if (position != -1) {
                             adapter.notifyItemChanged(position)
@@ -304,9 +322,22 @@ class HomeFragment : Fragment() {
         }
     }
 
-    // ==================== CARGAR PUBLICACIONES ====================
+    // ==================== VERIFICACIÓN Y CARGA ====================
+
+    private fun verificarConexionYCargar() {
+        if (NetworkUtils.isInternetAvailable(requireContext())) {
+            println("✅ Conexión disponible: ${NetworkUtils.getConnectionType(requireContext())}")
+            ocultarMensajeSinConexion()
+            cargarPublicaciones()
+        } else {
+            println("❌ Sin conexión a internet")
+            mostrarMensajeSinConexion()
+        }
+    }
 
     private fun cargarPublicaciones() {
+        mostrarCargando(true)
+
         lifecycleScope.launch {
             try {
                 val response = RetrofitClient.publicacionesApi.obtenerPublicaciones()
@@ -322,7 +353,6 @@ class HomeFragment : Fragment() {
                                 "$baseUrl$url"
                             }
 
-                            // ✅ CAMBIO: Construir URL completa de la foto de perfil del usuario
                             val fotoPerfilUsuario = if (!pub.usuario?.foto_perfil.isNullOrEmpty()) {
                                 "$baseUrl${pub.usuario?.foto_perfil}"
                             } else {
@@ -341,7 +371,7 @@ class HomeFragment : Fragment() {
                                 favoritos = pub.cantidad_favoritos,
                                 usuarioId = pub.usuario?.id_usuario.toString() ?: "",
                                 usuarioNombre = pub.usuario?.usuario ?: "Usuario",
-                                usuarioFoto = fotoPerfilUsuario, // ✅ NUEVO: Foto del usuario
+                                usuarioFoto = fotoPerfilUsuario,
                                 usuarioLike = false,
                                 usuarioDislike = false,
                                 usuarioFavorito = false
@@ -349,27 +379,52 @@ class HomeFragment : Fragment() {
                         }
 
                         adapter.updatePublicaciones(publicaciones)
-
-                        // ✅ Cargar el estado de reacciones del usuario
                         cargarEstadoReacciones(publicaciones)
 
+                        mostrarCargando(false)
                         println("✅ ${publicaciones.size} publicaciones cargadas")
                     } else {
+                        mostrarCargando(false)
                         Toast.makeText(context, "No hay publicaciones", Toast.LENGTH_SHORT).show()
                     }
                 } else {
+                    mostrarCargando(false)
                     Toast.makeText(context, "Error al cargar publicaciones", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                mostrarCargando(false)
+                if (!NetworkUtils.isInternetAvailable(requireContext())) {
+                    mostrarMensajeSinConexion()
+                } else {
+                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
                 e.printStackTrace()
             }
         }
     }
 
-    /**
-     * Carga el estado de reacciones del usuario para cada publicación
-     */
+    private fun mostrarCargando(mostrar: Boolean) {
+        progressBar.visibility = if (mostrar) View.VISIBLE else View.GONE
+        recyclerView.visibility = if (mostrar) View.GONE else View.VISIBLE
+    }
+
+    private fun mostrarMensajeSinConexion() {
+        layoutSinConexion.visibility = View.VISIBLE
+        recyclerView.visibility = View.GONE
+        progressBar.visibility = View.GONE
+
+        Toast.makeText(
+            context,
+            "Sin conexión a internet",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+
+    private fun ocultarMensajeSinConexion() {
+        layoutSinConexion.visibility = View.GONE
+        recyclerView.visibility = View.VISIBLE
+    }
+
     private fun cargarEstadoReacciones(publicaciones: List<Publicacion>) {
         lifecycleScope.launch {
             publicaciones.forEach { pub ->
@@ -394,7 +449,6 @@ class HomeFragment : Fragment() {
                 }
             }
 
-            // Actualizar UI después de cargar todos los estados
             adapter.notifyDataSetChanged()
         }
     }
