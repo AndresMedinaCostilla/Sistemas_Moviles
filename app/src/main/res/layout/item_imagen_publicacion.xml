@@ -5,12 +5,13 @@
     android:layout_height="match_parent"
     android:background="#1A000000">
 
-    <!-- Imagen principal -->
+    <!-- Imagen principal con mejor ajuste -->
     <ImageView
         android:id="@+id/imgPublicacion"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerCrop"
+        android:scaleType="centerInside"
+        android:adjustViewBounds="true"
         android:contentDescription="Imagen de publicación" />
 
     <!-- Spinner de carga centrado -->

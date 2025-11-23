@@ -92,6 +92,9 @@
         <action
             android:id="@+id/action_perfilFragment_to_favoritosFragment"
             app:destination="@id/favoritosFragment" />
+        <action
+            android:id="@+id/action_perfilFragment_to_busquedaFragment"
+            app:destination="@id/busquedaFragment" />
     </fragment>
     <fragment
         android:id="@+id/borradoresFragment"

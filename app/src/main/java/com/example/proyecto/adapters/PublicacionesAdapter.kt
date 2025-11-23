@@ -24,6 +24,8 @@ class PublicacionesAdapter(
     inner class PublicacionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val viewPagerImagenes: ViewPager2 = itemView.findViewById(R.id.viewPagerImagenes)
         val layoutIndicadores: LinearLayout = itemView.findViewById(R.id.layoutIndicadores)
+        val imgUsuarioPerfil: ImageView = itemView.findViewById(R.id.imgUsuarioPerfil)
+        val txtUsuarioNombre: TextView = itemView.findViewById(R.id.txtUsuarioNombre)
         val txtTitulo: TextView = itemView.findViewById(R.id.txtTitulo)
         val txtDescripcion: TextView = itemView.findViewById(R.id.txtDescripcion)
         val txtFecha: TextView = itemView.findViewById(R.id.txtFecha)
@@ -36,7 +38,9 @@ class PublicacionesAdapter(
         val btnFavorite: ImageView = itemView.findViewById(R.id.btnFavorite)
 
         fun bind(publicacion: Publicacion) {
-            // Configurar textos
+            // Configurar usuario
+            txtUsuarioNombre.text = publicacion.usuarioNombre
+            imgUsuarioPerfil.setImageResource(R.drawable.user)
             txtTitulo.text = publicacion.titulo
             txtDescripcion.text = publicacion.descripcion
             txtFecha.text = publicacion.fecha

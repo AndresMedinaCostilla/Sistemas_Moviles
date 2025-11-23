@@ -17,15 +17,49 @@
         android:layout_height="wrap_content"
         android:padding="12dp">
 
-        <!-- Contenedor de imágenes con ViewPager2 -->
+        <!-- Header con usuario SEPARADO -->
+        <LinearLayout
+            android:id="@+id/headerUsuario"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingBottom="12dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <!-- Foto de perfil del usuario -->
+            <ImageView
+                android:id="@+id/imgUsuarioPerfil"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/user"
+                android:scaleType="centerCrop"
+                android:contentDescription="Foto de perfil del usuario" />
+
+            <!-- Nombre del usuario -->
+            <TextView
+                android:id="@+id/txtUsuarioNombre"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="Usuario"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Contenedor de imágenes con ViewPager2 (MÁS GRANDE) -->
         <FrameLayout
             android:id="@+id/frameImagenes"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/headerUsuario"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintDimensionRatio="16:9">
+            app:layout_constraintDimensionRatio="4:5">
 
             <!-- ViewPager2 para múltiples imágenes -->
             <androidx.viewpager2.widget.ViewPager2
@@ -40,9 +74,9 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|center_horizontal"
                 android:layout_marginBottom="8dp"
-                android:background="#80000000"
                 android:orientation="horizontal"
-                android:padding="4dp" />
+                android:padding="4dp"
+                android:background="#80000000" />
 
         </FrameLayout>
 
