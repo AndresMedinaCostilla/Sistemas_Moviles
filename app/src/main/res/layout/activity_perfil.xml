@@ -21,7 +21,6 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Header con foto de perfil e información -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -35,7 +34,6 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <!-- Foto de perfil -->
                     <ImageView
                         android:layout_width="80dp"
                         android:layout_height="80dp"
@@ -76,7 +74,6 @@
 
                     </LinearLayout>
 
-                    <!-- Botón editar perfil -->
                     <ImageButton
                         android:layout_width="40dp"
                         android:layout_height="40dp"
@@ -86,19 +83,20 @@
 
                 </LinearLayout>
 
-                <!-- Bio -->
-                <TextView
+                <Button
+                    android:id="@+id/btnCerrarSesion"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ut mauris rhoncus, porttitor leo imperdiet, suscipit urna."
-                    android:textColor="#E0E0E0"
-                    android:textSize="14sp"
-                    android:lineSpacingExtra="4dp"
-                    android:layout_marginTop="16dp" />
+                    android:text="CERRAR SESIÓN"
+                    android:textColor="#FFFFFF"
+                    android:background="#777"
+                    android:textStyle="bold"
+                    android:layout_marginTop="16dp"
+                    android:padding="12dp"
+                    android:textSize="16sp" />
 
             </LinearLayout>
 
-            <!-- Sección de Navegación entre pestañas -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -106,7 +104,6 @@
                 android:background="#1A1A1A"
                 android:padding="8dp">
 
-                <!-- Botón Publicaciones -->
                 <LinearLayout
                     android:id="@+id/btnPublicaciones"
                     android:layout_width="0dp"
@@ -138,7 +135,6 @@
 
                 </LinearLayout>
 
-                <!-- Botón Favoritos -->
                 <LinearLayout
                     android:id="@+id/btnFavoritos"
                     android:layout_width="0dp"
@@ -169,7 +165,6 @@
 
                 </LinearLayout>
 
-                <!-- Botón Borradores -->
                 <LinearLayout
                     android:id="@+id/btnBorradores"
                     android:layout_width="0dp"
@@ -202,7 +197,6 @@
 
             </LinearLayout>
 
-            <!-- Contenido dinámico -->
             <LinearLayout
                 android:id="@+id/contenidoDinamico"
                 android:layout_width="match_parent"
@@ -220,7 +214,6 @@
                     android:textStyle="bold"
                     android:layout_marginBottom="16dp" />
 
-                <!-- Publicación de ejemplo -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -272,7 +265,6 @@
 
                         </LinearLayout>
 
-                        <!-- Estadísticas de la publicación -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -333,8 +325,6 @@
                                 android:orientation="horizontal"
                                 android:gravity="center">
 
-                                <!-- Espacio vacío para mantener la estructura -->
-
                             </LinearLayout>
 
                         </LinearLayout>
@@ -349,7 +339,6 @@
 
     </ScrollView>
 
-    <!-- Barra inferior de navegación - FIJA EN LA PARTE INFERIOR -->
     <LinearLayout
         android:id="@+id/bottomNav"
         android:layout_width="0dp"
