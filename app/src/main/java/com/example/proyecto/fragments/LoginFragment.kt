@@ -14,6 +14,7 @@ import androidx.navigation.fragment.findNavController
 import com.example.proyecto.R
 import com.example.proyecto.models.requests.LoginRequest
 import com.example.proyecto.network.RetrofitClient
+import com.example.proyecto.utils.SessionManager
 import kotlinx.coroutines.launch
 
 class LoginFragment : Fragment() {
@@ -22,6 +23,9 @@ class LoginFragment : Fragment() {
     private lateinit var etContrasena: EditText
     private lateinit var btnIniciarSesion: Button
     private lateinit var txtRegistro: TextView
+
+    // SessionManager para guardar la sesión
+    private lateinit var sessionManager: SessionManager
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -32,6 +36,16 @@ class LoginFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Inicializar SessionManager
+        sessionManager = SessionManager(requireContext())
+
+        // Verificar si ya hay sesión activa
+        if (sessionManager.isLoggedIn()) {
+            // Si ya está logueado, ir directo al Home
+            findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
+            return
+        }
 
         // Inicializar vistas con los IDs correctos del XML
         etCorreo = view.findViewById(R.id.txtCorreo)
@@ -73,15 +87,25 @@ class LoginFragment : Fragment() {
                 if (response.isSuccessful && response.body()?.success == true) {
                     val userData = response.body()?.data
 
-                    Toast.makeText(
-                        requireContext(),
-                        "¡Bienvenido ${userData?.nombre}!",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    if (userData != null) {
+                        // 🔥 GUARDAR LA SESIÓN CON UsuarioData
+                        sessionManager.saveUserSession(userData)
 
-                    // Aquí podrías guardar los datos del usuario (SharedPreferences)
-                    // y navegar al Home
-                    findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
+                        Toast.makeText(
+                            requireContext(),
+                            "¡Bienvenido ${userData.nombre}!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        // Navegar al Home
+                        findNavController().navigate(R.id.action_loginFragment_to_homeFragment)
+                    } else {
+                        Toast.makeText(
+                            requireContext(),
+                            "Error: No se recibieron datos del usuario",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
 
                 } else {
                     val errorMsg = response.body()?.message ?: "La contraseña o el correo no coinciden"

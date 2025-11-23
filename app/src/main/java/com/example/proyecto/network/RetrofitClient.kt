@@ -11,7 +11,7 @@ object RetrofitClient {
     // 🔥 IMPORTANTE: Cambia esta URL según tu configuración
     // - Emulador Android: "http://10.0.2.2:3000/"
     // - Dispositivo físico: "http://TU_IP_LOCAL:3000/" (ej: http://192.168.1.100:3000/)
-    private const val BASE_URL = "http://10.0.2.2:3000/"
+    const val BASE_URL: String = "http://10.0.2.2:3000/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

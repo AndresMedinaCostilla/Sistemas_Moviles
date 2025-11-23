@@ -84,6 +84,23 @@ dependencies {
     // Coil para manejo de imágenes
     implementation("io.coil-kt:coil:2.5.0")
 
+    // Glide para cargar imágenes
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+
+    // Gson para JSON (probablemente ya la tienes)
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // Retrofit
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // Navigation
+    implementation("androidx.navigation:navigation-fragment-ktx:2.7.5")
+    implementation("androidx.navigation:navigation-ui-ktx:2.7.5")
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

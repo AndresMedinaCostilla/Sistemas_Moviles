@@ -35,6 +35,7 @@
                     android:gravity="center_vertical">
 
                     <ImageView
+                        android:id="@+id/imgFotoPerfil"
                         android:layout_width="80dp"
                         android:layout_height="80dp"
                         android:src="@drawable/user"
@@ -49,6 +50,7 @@
                         android:layout_marginStart="16dp">
 
                         <TextView
+                            android:id="@+id/txtNombre"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Nombre"
@@ -57,6 +59,7 @@
                             android:textStyle="bold" />
 
                         <TextView
+                            android:id="@+id/txtUsuario"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@usuario"
@@ -65,6 +68,7 @@
                             android:layout_marginTop="4dp" />
 
                         <TextView
+                            android:id="@+id/txtMiembroDesde"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Miembro desde 2024"
@@ -75,6 +79,7 @@
                     </LinearLayout>
 
                     <ImageButton
+                        android:id="@+id/btnEditarPerfil"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
                         android:src="@drawable/edit"
@@ -351,10 +356,14 @@
         app:layout_constraintStart_toStartOf="parent">
 
         <ImageView
+            android:id="@+id/btnNavHome"
             android:layout_width="60dp"
             android:layout_height="35dp"
             android:src="@drawable/home"
-            android:tint="#FFFFFF" />
+            android:tint="#FFFFFF"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
 
         <Space
             android:layout_width="0dp"
@@ -362,10 +371,14 @@
             android:layout_weight="1" />
 
         <ImageView
+            android:id="@+id/btnNavAdd"
             android:layout_width="115dp"
             android:layout_height="45dp"
             android:src="@drawable/add"
-            android:tint="#8EE5E6" />
+            android:tint="#8EE5E6"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
 
         <Space
             android:layout_width="0dp"
@@ -373,10 +386,14 @@
             android:layout_weight="1" />
 
         <ImageView
+            android:id="@+id/btnNavSearch"
             android:layout_width="60dp"
             android:layout_height="35dp"
             android:src="@drawable/buscar"
-            android:tint="#FFFFFF" />
+            android:tint="#FFFFFF"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
