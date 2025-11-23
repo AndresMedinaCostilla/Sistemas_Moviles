@@ -10,5 +10,11 @@ data class Publicacion(
     var dislikes: Int,
     val comentarios: Int,
     val usuarioId: String,
-    val usuarioNombre: String
+    val usuarioNombre: String,
+
+
+    var favoritos: Int = 0,
+    var usuarioLike: Boolean = false,
+    var usuarioDislike: Boolean = false,
+    var usuarioFavorito: Boolean = false
 )

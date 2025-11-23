@@ -16,6 +16,8 @@ import com.example.proyecto.R
 import com.example.proyecto.adapters.PublicacionesAdapter
 import com.example.proyecto.models.Publicacion
 import com.example.proyecto.network.RetrofitClient
+import com.example.proyecto.network.ReaccionRequest
+import com.example.proyecto.network.FavoritoRequest
 import com.example.proyecto.utils.SessionManager
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -32,8 +34,8 @@ class HomeFragment : Fragment() {
     private lateinit var imgUserIcon: ImageView
     private lateinit var txtUsername: TextView
 
-    // SessionManager para obtener datos del usuario
     private lateinit var sessionManager: SessionManager
+    private var idUsuarioActual: Int = 0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -45,10 +47,17 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Inicializar SessionManager
         sessionManager = SessionManager(requireContext())
 
-        // Inicializar vistas
+        // Obtener ID del usuario actual
+        val userData = sessionManager.getUserData()
+        idUsuarioActual = userData?.idUsuario ?: 0
+
+        if (idUsuarioActual == 0) {
+            Toast.makeText(context, "Error: No hay sesión activa", Toast.LENGTH_LONG).show()
+            return
+        }
+
         recyclerView = view.findViewById(R.id.recyclerViewPublicaciones)
         btnHome = view.findViewById(R.id.btnHome)
         btnAdd = view.findViewById(R.id.btnAdd)
@@ -56,36 +65,19 @@ class HomeFragment : Fragment() {
         imgUserIcon = view.findViewById(R.id.imgUserIcon)
         txtUsername = view.findViewById(R.id.txtUsername)
 
-        // 🔥 Configurar información del usuario desde la sesión
         setupUserInfo()
-
-        // Configurar RecyclerView
         setupRecyclerView()
-
-        // Configurar listeners de navegación
         setupBottomNavigation()
         setupTopNavigation()
-
-        // Cargar publicaciones
         cargarPublicaciones()
     }
 
-    /**
-     * Configura la información del usuario en el toolbar superior
-     */
     private fun setupUserInfo() {
         val userData = sessionManager.getUserData()
 
         if (userData != null) {
-            // Mostrar nombre de usuario
             val nombreUsuario = sessionManager.getUser()
             txtUsername.text = nombreUsuario
-
-            // 🔍 LOGS DE DEBUG
-            println("🔍 DEBUG - userData completo: $userData")
-            println("🔍 DEBUG - fotoPerfil value: '${userData.fotoPerfil}'")
-            println("🔍 DEBUG - fotoPerfil isEmpty: ${userData.fotoPerfil?.isEmpty()}")
-            println("🔍 DEBUG - fotoPerfil isNullOrEmpty: ${userData.fotoPerfil.isNullOrEmpty()}")
 
             val fotoPerfil = userData.fotoPerfil
 
@@ -93,49 +85,18 @@ class HomeFragment : Fragment() {
                 val baseUrl = RetrofitClient.BASE_URL.removeSuffix("/")
                 val fullImageUrl = "$baseUrl$fotoPerfil"
 
-                println("🖼️ URL completa a cargar: $fullImageUrl")
-
                 Glide.with(this)
                     .load(fullImageUrl)
                     .placeholder(R.drawable.user)
                     .error(R.drawable.user)
                     .circleCrop()
-                    .listener(object : com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable> {
-                        override fun onLoadFailed(
-                            e: com.bumptech.glide.load.engine.GlideException?,
-                            model: Any?,
-                            target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>,
-                            isFirstResource: Boolean
-                        ): Boolean {
-                            println("❌ Glide error al cargar imagen")
-                            println("❌ Excepción: ${e?.message}")
-                            e?.rootCauses?.forEach { cause ->
-                                println("❌ Causa: ${cause.message}")
-                            }
-                            return false
-                        }
-
-                        override fun onResourceReady(
-                            resource: android.graphics.drawable.Drawable,
-                            model: Any,
-                            target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>,
-                            dataSource: com.bumptech.glide.load.DataSource,
-                            isFirstResource: Boolean
-                        ): Boolean {
-                            println("✅ Imagen cargada exitosamente desde: $dataSource")
-                            return false
-                        }
-                    })
                     .into(imgUserIcon)
             } else {
-                println("⚠️ fotoPerfil está vacío o es null")
                 imgUserIcon.setImageResource(R.drawable.user)
             }
         } else {
-            println("❌ userData es null")
             txtUsername.text = "Usuario"
             imgUserIcon.setImageResource(R.drawable.user)
-            Toast.makeText(context, "No hay sesión activa", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -143,16 +104,16 @@ class HomeFragment : Fragment() {
         adapter = PublicacionesAdapter(
             publicaciones = emptyList(),
             onLikeClick = { publicacion ->
-                Toast.makeText(context, "Like en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+                manejarLike(publicacion)
             },
             onDislikeClick = { publicacion ->
-                Toast.makeText(context, "Dislike en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+                manejarDislike(publicacion)
             },
             onCommentClick = { publicacion ->
                 findNavController().navigate(R.id.action_homeFragment_to_commentsFragment)
             },
             onFavoriteClick = { publicacion ->
-                Toast.makeText(context, "Favorito: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+                manejarFavorito(publicacion)
             },
             onPublicacionClick = { publicacion ->
                 Toast.makeText(context, "Ver: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
@@ -180,9 +141,155 @@ class HomeFragment : Fragment() {
     private fun setupTopNavigation() {
         imgUserIcon.setOnClickListener {
             findNavController().navigate(R.id.action_homeFragment_to_perfilFragment)
-            Toast.makeText(context, "Perfil", Toast.LENGTH_SHORT).show()
         }
     }
+
+    // ==================== MANEJO DE REACCIONES ====================
+
+    /**
+     * Maneja el click en el botón Like
+     */
+    private fun manejarLike(publicacion: Publicacion) {
+        lifecycleScope.launch {
+            try {
+                val idPublicacion = publicacion.id.toInt()
+                val request = ReaccionRequest(
+                    id_usuario = idUsuarioActual,
+                    tipo_reaccion = "like"
+                )
+
+                val response = RetrofitClient.reaccionesApi.reaccionarPublicacion(
+                    idPublicacion,
+                    request
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val data = response.body()!!.data
+
+                    if (data != null) {
+                        // Actualizar modelo local
+                        publicacion.likes = data.likes
+                        publicacion.dislikes = data.dislikes
+                        publicacion.usuarioLike = data.reaccion_usuario == "like"
+                        publicacion.usuarioDislike = data.reaccion_usuario == "dislike"
+
+                        // Notificar al adapter del cambio específico
+                        val position = adapter.publicaciones.indexOf(publicacion)
+                        if (position != -1) {
+                            adapter.notifyItemChanged(position)
+                        }
+
+                        val mensaje = when {
+                            publicacion.usuarioLike -> "👍 Like agregado"
+                            else -> "Like eliminado"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Error al procesar like", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Maneja el click en el botón Dislike
+     */
+    private fun manejarDislike(publicacion: Publicacion) {
+        lifecycleScope.launch {
+            try {
+                val idPublicacion = publicacion.id.toInt()
+                val request = ReaccionRequest(
+                    id_usuario = idUsuarioActual,
+                    tipo_reaccion = "dislike"
+                )
+
+                val response = RetrofitClient.reaccionesApi.reaccionarPublicacion(
+                    idPublicacion,
+                    request
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val data = response.body()!!.data
+
+                    if (data != null) {
+                        // Actualizar modelo local
+                        publicacion.likes = data.likes
+                        publicacion.dislikes = data.dislikes
+                        publicacion.usuarioLike = data.reaccion_usuario == "like"
+                        publicacion.usuarioDislike = data.reaccion_usuario == "dislike"
+
+                        // Notificar al adapter del cambio específico
+                        val position = adapter.publicaciones.indexOf(publicacion)
+                        if (position != -1) {
+                            adapter.notifyItemChanged(position)
+                        }
+
+                        val mensaje = when {
+                            publicacion.usuarioDislike -> "👎 Dislike agregado"
+                            else -> "Dislike eliminado"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Error al procesar dislike", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Maneja el click en el botón Favorito
+     */
+    private fun manejarFavorito(publicacion: Publicacion) {
+        lifecycleScope.launch {
+            try {
+                val idPublicacion = publicacion.id.toInt()
+                val request = FavoritoRequest(id_usuario = idUsuarioActual)
+
+                val response = RetrofitClient.reaccionesApi.toggleFavorito(
+                    idPublicacion,
+                    request
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val data = response.body()!!.data
+
+                    if (data != null) {
+                        // Actualizar modelo local
+                        publicacion.favoritos = data.favoritos
+                        publicacion.usuarioFavorito = data.es_favorito
+
+                        // Notificar al adapter del cambio específico
+                        val position = adapter.publicaciones.indexOf(publicacion)
+                        if (position != -1) {
+                            adapter.notifyItemChanged(position)
+                        }
+
+                        val mensaje = if (data.es_favorito) {
+                            "⭐ Agregado a favoritos"
+                        } else {
+                            "Eliminado de favoritos"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Error al procesar favorito", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // ==================== CARGAR PUBLICACIONES ====================
 
     private fun cargarPublicaciones() {
         lifecycleScope.launch {
@@ -195,56 +302,82 @@ class HomeFragment : Fragment() {
                     if (responseBody.success) {
                         val baseUrl = RetrofitClient.BASE_URL.removeSuffix("/")
 
-                        // Convertir publicaciones del servidor a tu modelo local
                         val publicaciones = responseBody.data.map { pub ->
-                            // ✅ Construir URLs completas para las imágenes
                             val imagenesCompletas = pub.imagenes.map { url ->
                                 "$baseUrl$url"
                             }
-
-                            println("🔍 Publicación: ${pub.titulo}")
-                            println("   Imágenes URLs completas: $imagenesCompletas")
 
                             Publicacion(
                                 id = pub.id_publicacion.toString(),
                                 titulo = pub.titulo,
                                 descripcion = pub.descripcion ?: "",
-                                imagenesUrl = imagenesCompletas, // ⚠️ URLs completas
+                                imagenesUrl = imagenesCompletas,
                                 fecha = formatearFecha(pub.fecha_publicacion),
                                 likes = pub.cantidad_likes,
                                 dislikes = 0,
                                 comentarios = pub.cantidad_comentarios,
+                                favoritos = pub.cantidad_favoritos,
                                 usuarioId = pub.usuario?.id_usuario.toString() ?: "",
-                                usuarioNombre = pub.usuario?.usuario ?: "Usuario"
+                                usuarioNombre = pub.usuario?.usuario ?: "Usuario",
+                                usuarioLike = false,
+                                usuarioDislike = false,
+                                usuarioFavorito = false
                             )
                         }
 
                         adapter.updatePublicaciones(publicaciones)
+
+                        // ✅ Cargar el estado de reacciones del usuario
+                        cargarEstadoReacciones(publicaciones)
+
                         println("✅ ${publicaciones.size} publicaciones cargadas")
                     } else {
                         Toast.makeText(context, "No hay publicaciones", Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    Toast.makeText(
-                        context,
-                        "Error al cargar publicaciones",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(context, "Error al cargar publicaciones", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    "Error: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 e.printStackTrace()
             }
         }
     }
 
+    /**
+     * Carga el estado de reacciones del usuario para cada publicación
+     */
+    private fun cargarEstadoReacciones(publicaciones: List<Publicacion>) {
+        lifecycleScope.launch {
+            publicaciones.forEach { pub ->
+                try {
+                    val response = RetrofitClient.reaccionesApi.obtenerEstadoReacciones(
+                        pub.id.toInt(),
+                        idUsuarioActual
+                    )
+
+                    if (response.isSuccessful && response.body() != null) {
+                        val estado = response.body()!!.data
+
+                        if (estado != null) {
+                            pub.usuarioLike = estado.reaccion_usuario == "like"
+                            pub.usuarioDislike = estado.reaccion_usuario == "dislike"
+                            pub.usuarioFavorito = estado.es_favorito
+                            pub.dislikes = estado.dislikes
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("❌ Error al obtener estado de publicación ${pub.id}: ${e.message}")
+                }
+            }
+
+            // Actualizar UI después de cargar todos los estados
+            adapter.notifyDataSetChanged()
+        }
+    }
+
     private fun formatearFecha(fechaISO: String): String {
         return try {
-            // Convertir fecha ISO del servidor a formato legible
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
             val outputFormat = SimpleDateFormat("dd 'de' MMMM 'del' yyyy 'a las' HH:mm", Locale("es", "MX"))
             val date = inputFormat.parse(fechaISO)

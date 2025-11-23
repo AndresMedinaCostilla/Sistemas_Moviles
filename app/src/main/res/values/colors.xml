@@ -7,4 +7,8 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <color name="like_activo">#8EE5E6</color>       <!-- Azul/verde claro -->
+    <color name="dislike_activo">#FF6B6B</color>    <!-- Rojo -->
+    <color name="favorito_activo">#FFD93D</color>
 </resources>

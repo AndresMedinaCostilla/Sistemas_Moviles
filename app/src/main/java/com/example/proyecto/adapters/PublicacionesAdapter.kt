@@ -13,7 +13,7 @@ import com.example.proyecto.R
 import com.example.proyecto.models.Publicacion
 
 class PublicacionesAdapter(
-    private var publicaciones: List<Publicacion>,
+    var publicaciones: List<Publicacion>,  // ✅ Cambiado a 'var' sin 'private'
     private val onLikeClick: (Publicacion) -> Unit,
     private val onDislikeClick: (Publicacion) -> Unit,
     private val onCommentClick: (Publicacion) -> Unit,
@@ -27,15 +27,16 @@ class PublicacionesAdapter(
         val txtTitulo: TextView = itemView.findViewById(R.id.txtTitulo)
         val txtDescripcion: TextView = itemView.findViewById(R.id.txtDescripcion)
         val txtFecha: TextView = itemView.findViewById(R.id.txtFecha)
-        val txtLikes: TextView = itemView.findViewById(R.id.txtLikes)
-        val txtDislikes: TextView = itemView.findViewById(R.id.txtDislikes)
-        val txtComments: TextView = itemView.findViewById(R.id.txtComments)
         val btnLike: ImageView = itemView.findViewById(R.id.btnLike)
+        val txtLikes: TextView = itemView.findViewById(R.id.txtLikes)
         val btnDislike: ImageView = itemView.findViewById(R.id.btnDislike)
+        val txtDislikes: TextView = itemView.findViewById(R.id.txtDislikes)
         val btnComment: ImageView = itemView.findViewById(R.id.btnComment)
+        val txtComments: TextView = itemView.findViewById(R.id.txtComments)
         val btnFavorite: ImageView = itemView.findViewById(R.id.btnFavorite)
 
         fun bind(publicacion: Publicacion) {
+            // Configurar textos
             txtTitulo.text = publicacion.titulo
             txtDescripcion.text = publicacion.descripcion
             txtFecha.text = publicacion.fecha
@@ -43,34 +44,55 @@ class PublicacionesAdapter(
             txtDislikes.text = publicacion.dislikes.toString()
             txtComments.text = publicacion.comentarios.toString()
 
-            // 🔍 DEBUG: Ver qué URLs estamos recibiendo
-            println("📋 Configurando publicación: ${publicacion.titulo}")
-            println("   - Imágenes (${publicacion.imagenesUrl.size}):")
-            publicacion.imagenesUrl.forEachIndexed { index, url ->
-                println("     [$index] = '$url'")
+            // ✅ Configurar apariencia del botón Like
+            if (publicacion.usuarioLike) {
+                btnLike.setColorFilter(
+                    ContextCompat.getColor(itemView.context, R.color.like_activo)
+                )
+            } else {
+                btnLike.setColorFilter(
+                    ContextCompat.getColor(itemView.context, R.color.white)
+                )
             }
 
-            // ✅ Verificar si hay imágenes
-            if (publicacion.imagenesUrl.isEmpty()) {
-                // Si no hay imágenes, ocultar el ViewPager y los indicadores
-                viewPagerImagenes.visibility = View.GONE
-                layoutIndicadores.visibility = View.GONE
-                println("   ⚠️ No hay imágenes para esta publicación")
+            // ✅ Configurar apariencia del botón Dislike
+            if (publicacion.usuarioDislike) {
+                btnDislike.setColorFilter(
+                    ContextCompat.getColor(itemView.context, R.color.dislike_activo)
+                )
             } else {
-                // Mostrar el ViewPager con las imágenes
-                viewPagerImagenes.visibility = View.VISIBLE
+                btnDislike.setColorFilter(
+                    ContextCompat.getColor(itemView.context, R.color.white)
+                )
+            }
 
-                // ✅ Usar el nuevo adapter que carga URLs
+            // ✅ Configurar apariencia del botón Favorito
+            if (publicacion.usuarioFavorito) {
+                btnFavorite.setColorFilter(
+                    ContextCompat.getColor(itemView.context, R.color.favorito_activo)
+                )
+            } else {
+                btnFavorite.setColorFilter(
+                    ContextCompat.getColor(itemView.context, R.color.white)
+                )
+            }
+
+            // Configurar ViewPager para imágenes
+            if (publicacion.imagenesUrl.isNotEmpty()) {
                 val imagenesAdapter = ImagenesPublicacionUrlAdapter(publicacion.imagenesUrl)
                 viewPagerImagenes.adapter = imagenesAdapter
 
-                // Configurar indicadores de página (dots)
-                setupIndicadores(publicacion.imagenesUrl.size)
-                viewPagerImagenes.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                    override fun onPageSelected(position: Int) {
-                        actualizarIndicadores(position)
-                    }
-                })
+                // Configurar indicadores si hay más de una imagen
+                if (publicacion.imagenesUrl.size > 1) {
+                    setupIndicadores(publicacion.imagenesUrl.size, 0)
+                    viewPagerImagenes.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+                        override fun onPageSelected(position: Int) {
+                            setupIndicadores(publicacion.imagenesUrl.size, position)
+                        }
+                    })
+                } else {
+                    layoutIndicadores.removeAllViews()
+                }
             }
 
             // Listeners
@@ -81,58 +103,22 @@ class PublicacionesAdapter(
             itemView.setOnClickListener { onPublicacionClick(publicacion) }
         }
 
-        private fun setupIndicadores(cantidad: Int) {
+        private fun setupIndicadores(total: Int, seleccionado: Int) {
             layoutIndicadores.removeAllViews()
 
-            if (cantidad <= 1) {
-                layoutIndicadores.visibility = View.GONE
-                return
-            }
+            for (i in 0 until total) {
+                val indicador = View(itemView.context)
+                val params = LinearLayout.LayoutParams(16, 16)
+                params.setMargins(4, 0, 4, 0)
+                indicador.layoutParams = params
 
-            layoutIndicadores.visibility = View.VISIBLE
-            val indicadores = arrayOfNulls<ImageView>(cantidad)
-            val layoutParams = LinearLayout.LayoutParams(8.dpToPx(), 8.dpToPx())
-            layoutParams.setMargins(4, 0, 4, 0)
-
-            for (i in indicadores.indices) {
-                indicadores[i] = ImageView(itemView.context)
-                indicadores[i]?.setImageDrawable(
-                    ContextCompat.getDrawable(
-                        itemView.context,
-                        R.drawable.indicator_dot
-                    )
-                )
-                indicadores[i]?.layoutParams = layoutParams
-                indicadores[i]?.setColorFilter(
-                    ContextCompat.getColor(itemView.context, android.R.color.darker_gray)
-                )
-                layoutIndicadores.addView(indicadores[i])
-            }
-
-            if (indicadores.isNotEmpty()) {
-                indicadores[0]?.setColorFilter(
-                    ContextCompat.getColor(itemView.context, android.R.color.white)
-                )
-            }
-        }
-
-        private fun Int.dpToPx(): Int {
-            return (this * itemView.context.resources.displayMetrics.density).toInt()
-        }
-
-        private fun actualizarIndicadores(posicion: Int) {
-            val childCount = layoutIndicadores.childCount
-            for (i in 0 until childCount) {
-                val imageView = layoutIndicadores.getChildAt(i) as ImageView
-                if (i == posicion) {
-                    imageView.setColorFilter(
-                        ContextCompat.getColor(itemView.context, android.R.color.white)
-                    )
+                if (i == seleccionado) {
+                    indicador.setBackgroundResource(R.drawable.indicator_active)
                 } else {
-                    imageView.setColorFilter(
-                        ContextCompat.getColor(itemView.context, android.R.color.darker_gray)
-                    )
+                    indicador.setBackgroundResource(R.drawable.indicator_inactive)
                 }
+
+                layoutIndicadores.addView(indicador)
             }
         }
     }
