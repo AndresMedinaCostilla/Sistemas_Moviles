@@ -123,8 +123,31 @@ class PerfilFragment : Fragment() {
                 Toast.makeText(context, "Ver: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
             },
             onEditarClick = { publicacion ->
-                // TODO: Implementar navegación a editar publicación
-                Toast.makeText(context, "Editar: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+                val esBorrador = publicacion.id.startsWith("draft_")
+
+                val bundle = Bundle().apply {
+                    if (esBorrador) {
+                        putString("borrador_id", publicacion.id)
+                        putString("borrador_titulo", publicacion.titulo)
+                        putString("borrador_contenido", publicacion.descripcion)
+                    } else {
+                        putString("publicacion_id", publicacion.id)
+                        putString("publicacion_titulo", publicacion.titulo)
+                        putString("publicacion_contenido", publicacion.descripcion)
+                    }
+                }
+
+                if (esBorrador) {
+                    findNavController().navigate(
+                        R.id.action_perfilFragment_to_editarBorradorFragment,
+                        bundle
+                    )
+                } else {
+                    findNavController().navigate(
+                        R.id.action_perfilFragment_to_editarPublicacionFragment,
+                        bundle
+                    )
+                }
             },
             onEliminarClick = { publicacion ->
                 eliminarPublicacion(publicacion)

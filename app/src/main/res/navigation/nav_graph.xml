@@ -84,76 +84,29 @@
             android:id="@+id/action_perfilFragment_to_loginFragment"
             app:destination="@id/loginFragment" />
         <action
-            android:id="@+id/action_perfilFragment_to_borradoresFragment"
-            app:destination="@id/borradoresFragment" />
-        <action
             android:id="@+id/action_perfilFragment_to_editarPublicacionFragment"
             app:destination="@id/editarPublicacionFragment" />
         <action
-            android:id="@+id/action_perfilFragment_to_favoritosFragment"
-            app:destination="@id/favoritosFragment" />
-        <action
             android:id="@+id/action_perfilFragment_to_busquedaFragment"
             app:destination="@id/busquedaFragment" />
-    </fragment>
-    <fragment
-        android:id="@+id/borradoresFragment"
-        android:name="com.example.proyecto.fragments.BorradoresFragment"
-        android:label="BorradoresFragment" >
         <action
-            android:id="@+id/action_borradoresFragment_to_perfilFragment"
-            app:destination="@id/perfilFragment" />
-        <action
-            android:id="@+id/action_borradoresFragment_to_editarPerfilFragment"
-            app:destination="@id/editarPerfilFragment" />
-        <action
-            android:id="@+id/action_borradoresFragment_to_loginFragment"
-            app:destination="@id/loginFragment" />
-        <action
-            android:id="@+id/action_borradoresFragment_to_homeFragment"
-            app:destination="@id/homeFragment" />
-        <action
-            android:id="@+id/action_borradoresFragment_to_busquedaFragment"
-            app:destination="@id/busquedaFragment" />
-        <action
-            android:id="@+id/action_borradoresFragment_to_agregarPublicacionFragment"
-            app:destination="@id/agregarPublicacionFragment" />
-        <action
-            android:id="@+id/action_borradoresFragment_to_editarPublicacionFragment"
-            app:destination="@id/editarPublicacionFragment" />
+            android:id="@+id/action_perfilFragment_to_editarBorradorFragment"
+            app:destination="@id/editarBorradorFragment" />
     </fragment>
     <fragment
         android:id="@+id/editarPublicacionFragment"
         android:name="com.example.proyecto.fragments.EditarPublicacionFragment"
         android:label="EditarPublicacionFragment" >
         <action
-            android:id="@+id/action_editarPublicacionFragment_to_borradoresFragment"
-            app:destination="@id/borradoresFragment" />
-        <action
             android:id="@+id/action_editarPublicacionFragment_to_perfilFragment"
             app:destination="@id/perfilFragment" />
     </fragment>
     <fragment
-        android:id="@+id/favoritosFragment"
-        android:name="com.example.proyecto.fragments.FavoritosFragment"
-        android:label="FavoritosFragment" >
+        android:id="@+id/editarBorradorFragment"
+        android:name="com.example.proyecto.fragments.EditarBorradorFragment"
+        android:label="EditarBorradorFragment" >
         <action
-            android:id="@+id/action_favoritosFragment_to_editarPerfilFragment"
-            app:destination="@id/editarPerfilFragment" />
-        <action
-            android:id="@+id/action_favoritosFragment_to_loginFragment"
-            app:destination="@id/loginFragment" />
-        <action
-            android:id="@+id/action_favoritosFragment_to_homeFragment"
-            app:destination="@id/homeFragment" />
-        <action
-            android:id="@+id/action_favoritosFragment_to_commentsFragment"
-            app:destination="@id/commentsFragment" />
-        <action
-            android:id="@+id/action_favoritosFragment_to_busquedaFragment"
-            app:destination="@id/busquedaFragment" />
-        <action
-            android:id="@+id/action_favoritosFragment_to_agregarPublicacionFragment"
-            app:destination="@id/agregarPublicacionFragment" />
+            android:id="@+id/action_editarBorradorFragment_to_perfilFragment"
+            app:destination="@id/perfilFragment" />
     </fragment>
 </navigation>

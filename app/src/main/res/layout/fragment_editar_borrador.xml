@@ -2,7 +2,6 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:background="#101010"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -35,9 +34,10 @@
             android:layout_weight="1" />
 
         <TextView
+            android:id="@+id/txtTituloHeader"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Editar Publicación"
+            android:text="Editar Borrador"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -65,7 +65,6 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Título -->
             <EditText
                 android:id="@+id/etTitulo"
                 android:layout_width="match_parent"
@@ -79,9 +78,6 @@
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
-            <!-- Contenido -->
-
-            <!-- Contador -->
             <EditText
                 android:id="@+id/etContenido"
                 android:layout_width="match_parent"
@@ -112,68 +108,112 @@
     </ScrollView>
 
     <!-- Sección de previsualización de imágenes -->
-    <LinearLayout
+    <androidx.cardview.widget.CardView
         android:id="@+id/layoutImagenes"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="#1A1A1A"
-        android:padding="12dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/btnGaleria"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
-
-        <!-- Título de la sección -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="Imágenes seleccionadas"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <!-- RecyclerView para mostrar las imágenes seleccionadas -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerImagenes"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            tools:listitem="@layout/imagenes" />
-
-    </LinearLayout>
-
-    <!-- Botón Galería -->
-
-    <!-- Botón Publicar -->
-
-    <ImageButton
-        android:id="@+id/btnGaleria"
-        android:layout_width="93dp"
-        android:layout_height="76dp"
-        android:layout_marginStart="156dp"
-        android:layout_marginBottom="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Abrir galería"
-        android:src="@drawable/galeria"
-        app:layout_constraintBottom_toTopOf="@id/btnPublicar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:tint="#8EE5E6" />
-
-    <Button
-        android:id="@+id/btnPublicar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="36dp"
-        android:background="#777"
-        android:text="PUBLICAR"
-        android:textColor="#eee"
-        android:textStyle="bold"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#1A1A1A"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp"
+        app:layout_constraintBottom_toTopOf="@id/btnGaleria"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="Imágenes seleccionadas"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerImagenes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+    <!-- Botón Galería -->
+    <ImageButton
+        android:id="@+id/btnGaleria"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginBottom="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Abrir galería o cámara"
+        android:src="@drawable/galeria"
+        app:layout_constraintBottom_toTopOf="@id/tvContadorImagenes"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:tint="#8EE5E6" />
+
+    <!-- Texto indicador -->
+    <TextView
+        android:id="@+id/tvContadorImagenes"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0/3 imágenes"
+        android:textColor="#AAAAAA"
+        android:textSize="12sp"
+        android:layout_marginBottom="12dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/layoutBotones" />
+
+    <!-- Contenedor de botones -->
+    <LinearLayout
+        android:id="@+id/layoutBotones"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent">
+
+        <!-- Botón Guardar Borrador -->
+        <Button
+            android:id="@+id/btnGuardarBorrador"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:background="#777"
+            android:text="GUARDAR"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+        <!-- Botón Publicar -->
+        <Button
+            android:id="@+id/btnPublicar"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="#8EE5E6"
+            android:text="PUBLICAR"
+            android:textColor="#000000"
+            android:textStyle="bold"
+            android:textSize="14sp" />
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

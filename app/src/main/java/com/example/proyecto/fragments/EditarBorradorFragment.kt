@@ -40,18 +40,17 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
-class EditarPublicacionFragment : Fragment() {
+class EditarBorradorFragment : Fragment() {
 
     private lateinit var sessionManager: SessionManager
     private lateinit var btnCancelar: ImageButton
     private lateinit var btnGaleria: ImageButton
-    private lateinit var btnActualizar: Button
+    private lateinit var btnPublicar: Button
     private lateinit var btnGuardarBorrador: Button
     private lateinit var etTitulo: EditText
     private lateinit var etContenido: EditText
     private lateinit var tvContadorCaracteres: TextView
     private lateinit var tvContadorImagenes: TextView
-    private lateinit var txtTituloHeader: TextView
     private lateinit var layoutImagenes: CardView
     private lateinit var recyclerImagenes: RecyclerView
 
@@ -60,7 +59,7 @@ class EditarPublicacionFragment : Fragment() {
     private var fotoUri: Uri? = null
 
     // Variables para detectar cambios
-    private var publicacionId: String = ""
+    private var borradorId: String = ""
     private var tituloOriginal = ""
     private var contenidoOriginal = ""
     private var imagenesOriginales = mutableListOf<Uri>()
@@ -116,7 +115,7 @@ class EditarPublicacionFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        return inflater.inflate(R.layout.fragment_editar_publicacion, container, false)
+        return inflater.inflate(R.layout.fragment_editar_borrador, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -125,7 +124,7 @@ class EditarPublicacionFragment : Fragment() {
         sessionManager = SessionManager(requireContext())
 
         inicializarVistas(view)
-        cargarDatosPublicacion()
+        cargarDatosBorrador()
         configurarRecyclerView()
         configurarListeners()
         configurarContadorCaracteres()
@@ -137,24 +136,23 @@ class EditarPublicacionFragment : Fragment() {
     private fun inicializarVistas(view: View) {
         btnCancelar = view.findViewById(R.id.btnCancelar)
         btnGaleria = view.findViewById(R.id.btnGaleria)
-        btnActualizar = view.findViewById(R.id.btnActualizar)
+        btnPublicar = view.findViewById(R.id.btnPublicar)
         btnGuardarBorrador = view.findViewById(R.id.btnGuardarBorrador)
         etTitulo = view.findViewById(R.id.etTitulo)
         etContenido = view.findViewById(R.id.etContenido)
         tvContadorCaracteres = view.findViewById(R.id.tvContadorCaracteres)
         tvContadorImagenes = view.findViewById(R.id.tvContadorImagenes)
-        txtTituloHeader = view.findViewById(R.id.txtTituloHeader)
         layoutImagenes = view.findViewById(R.id.layoutImagenes)
         recyclerImagenes = view.findViewById(R.id.recyclerImagenes)
     }
 
-    private fun cargarDatosPublicacion() {
+    private fun cargarDatosBorrador() {
         arguments?.let { args ->
-            publicacionId = args.getString("publicacion_id", "")
+            borradorId = args.getString("borrador_id", "")
 
             // Cargar texto
-            val titulo = args.getString("publicacion_titulo", "")
-            val contenido = args.getString("publicacion_contenido", "")
+            val titulo = args.getString("borrador_titulo", "")
+            val contenido = args.getString("borrador_contenido", "")
 
             etTitulo.setText(titulo)
             etContenido.setText(contenido)
@@ -189,9 +187,8 @@ class EditarPublicacionFragment : Fragment() {
             else Toast.makeText(context, "Máximo 3 imágenes permitidas", Toast.LENGTH_SHORT).show()
         }
 
-        btnActualizar.setOnClickListener { actualizarPublicacion() }
-
-        btnGuardarBorrador.setOnClickListener { guardarComoBorrador() }
+        btnGuardarBorrador.setOnClickListener { guardarBorrador() }
+        btnPublicar.setOnClickListener { publicarBorrador() }
     }
 
     private fun configurarContadorCaracteres() {
@@ -233,7 +230,7 @@ class EditarPublicacionFragment : Fragment() {
                 .setPositiveButton("Descartar cambios") { _, _ ->
                     findNavController().navigateUp()
                 }
-                .setNegativeButton("Continuar editando", null)
+                .setNegativeButton("Seguir editando", null)
                 .show()
         } else {
             findNavController().navigateUp()
@@ -305,7 +302,7 @@ class EditarPublicacionFragment : Fragment() {
         tvContadorImagenes.text = "${imagenesSeleccionadas.size}/3 imágenes"
     }
 
-    private fun guardarComoBorrador() {
+    private fun guardarBorrador() {
         val titulo = etTitulo.text.toString().trim()
         val contenido = etContenido.text.toString().trim()
 
@@ -314,35 +311,23 @@ class EditarPublicacionFragment : Fragment() {
             return
         }
 
-        // Mostrar diálogo de confirmación
-        AlertDialog.Builder(requireContext())
-            .setTitle("Guardar como borrador")
-            .setMessage("La publicación se guardará como borrador y se desactivará hasta que la publiques. ¿Deseas continuar?")
-            .setPositiveButton("Guardar") { _, _ ->
-                realizarGuardadoBorrador(titulo, contenido)
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
-    private fun realizarGuardadoBorrador(titulo: String, contenido: String) {
         btnGuardarBorrador.isEnabled = false
         btnGuardarBorrador.text = "Guardando..."
 
         lifecycleScope.launch {
             try {
-                println("📝 DEBUG - Guardando como borrador")
-                println("📝 DEBUG - publicacionId: $publicacionId")
-                println("📝 DEBUG - titulo: $titulo")
-                println("📝 DEBUG - contenido: $contenido")
+                println("💾 DEBUG - Guardando borrador")
+                println("💾 DEBUG - borradorId: $borradorId")
+                println("💾 DEBUG - titulo: $titulo")
+                println("💾 DEBUG - contenido: $contenido")
 
-                // TODO: Implementar llamada al API para convertir publicación en borrador
-                // val response = RetrofitClient.publicacionesApi.convertirABorrador(publicacionId, ...)
+                // TODO: Implementar llamada al API o base de datos local
+                // val response = RetrofitClient.borradorApi.actualizarBorrador(...)
 
                 Toast.makeText(
                     context,
-                    "Publicación guardada como borrador. Se desactivará hasta que la publiques.",
-                    Toast.LENGTH_LONG
+                    "Borrador guardado exitosamente",
+                    Toast.LENGTH_SHORT
                 ).show()
                 findNavController().navigateUp()
 
@@ -355,12 +340,12 @@ class EditarPublicacionFragment : Fragment() {
                 e.printStackTrace()
             } finally {
                 btnGuardarBorrador.isEnabled = true
-                btnGuardarBorrador.text = "GUARDAR BORRADOR"
+                btnGuardarBorrador.text = "GUARDAR"
             }
         }
     }
 
-    private fun actualizarPublicacion() {
+    private fun publicarBorrador() {
         val titulo = etTitulo.text.toString().trim()
         val contenido = etContenido.text.toString().trim()
 
@@ -376,21 +361,22 @@ class EditarPublicacionFragment : Fragment() {
         }
 
         // Mostrar progreso
-        btnActualizar.isEnabled = false
-        btnActualizar.text = "Actualizando..."
+        btnPublicar.isEnabled = false
+        btnPublicar.text = "Publicando..."
 
         lifecycleScope.launch {
             try {
                 val userId = sessionManager.getUserId()
 
-                println("📝 DEBUG - Actualizando publicación")
-                println("📝 DEBUG - publicacionId: $publicacionId")
-                println("📝 DEBUG - userId: $userId")
-                println("📝 DEBUG - titulo: $titulo")
-                println("📝 DEBUG - contenido: $contenido")
+                println("🚀 DEBUG - Publicando borrador")
+                println("🚀 DEBUG - borradorId: $borradorId")
+                println("🚀 DEBUG - userId: $userId")
+                println("🚀 DEBUG - titulo: $titulo")
+                println("🚀 DEBUG - contenido: $contenido")
+                println("🚀 DEBUG - imágenes: ${imagenesSeleccionadas.size}")
 
                 // Preparar datos
-                val idPublicacionBody = publicacionId.toRequestBody("text/plain".toMediaTypeOrNull())
+                val idBorradorBody = borradorId.toRequestBody("text/plain".toMediaTypeOrNull())
                 val idUsuarioBody = userId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                 val tituloBody = titulo.toRequestBody("text/plain".toMediaTypeOrNull())
                 val descripcionBody = contenido.toRequestBody("text/plain".toMediaTypeOrNull())
@@ -406,13 +392,12 @@ class EditarPublicacionFragment : Fragment() {
                     }
                 }
 
-                // TODO: Implementar llamada al API
-                // val response = RetrofitClient.publicacionesApi.actualizarPublicacion(...)
+                // TODO: Implementar llamada al API para publicar borrador
+                // val response = RetrofitClient.publicacionesApi.publicarBorrador(...)
 
-                // Por ahora, simular éxito
                 Toast.makeText(
                     context,
-                    "Publicación actualizada exitosamente",
+                    "¡Borrador publicado exitosamente!",
                     Toast.LENGTH_SHORT
                 ).show()
                 findNavController().navigateUp()
@@ -420,13 +405,13 @@ class EditarPublicacionFragment : Fragment() {
             } catch (e: Exception) {
                 Toast.makeText(
                     context,
-                    "Error: ${e.message}",
+                    "Error al publicar: ${e.message}",
                     Toast.LENGTH_LONG
                 ).show()
                 e.printStackTrace()
             } finally {
-                btnActualizar.isEnabled = true
-                btnActualizar.text = "ACTUALIZAR"
+                btnPublicar.isEnabled = true
+                btnPublicar.text = "PUBLICAR"
             }
         }
     }

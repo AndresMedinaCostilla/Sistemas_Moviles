@@ -37,7 +37,7 @@
             android:id="@+id/txtTituloHeader"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Crear Publicación"
+            android:text="Editar Publicación"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -188,7 +188,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <!-- Botón Guardar Borrador -->
+        <!-- Botón Guardar como Borrador -->
         <Button
             android:id="@+id/btnGuardarBorrador"
             android:layout_width="0dp"
@@ -196,21 +196,21 @@
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
             android:background="#777"
-            android:text="BORRADOR"
+            android:text="GUARDAR BORRADOR"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
             android:textSize="14sp" />
 
-        <!-- Botón Publicar -->
+        <!-- Botón Actualizar -->
         <Button
-            android:id="@+id/btnPublicar"
+            android:id="@+id/btnActualizar"
             android:layout_width="0dp"
             android:layout_height="50dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:background="#777"
-            android:text="PUBLICAR"
-            android:textColor="#FFFFFF"
+            android:background="#8EE5E6"
+            android:text="ACTUALIZAR"
+            android:textColor="#000000"
             android:textStyle="bold"
             android:textSize="14sp" />
 

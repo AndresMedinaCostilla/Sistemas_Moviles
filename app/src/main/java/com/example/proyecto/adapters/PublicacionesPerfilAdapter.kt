@@ -34,6 +34,7 @@ class PublicacionesPerfilAdapter(
         val txtUsuarioNombre: TextView = itemView.findViewById(R.id.txtUsuarioNombre)
         val btnMenu: ImageButton = itemView.findViewById(R.id.btnMenu)
         val txtTitulo: TextView = itemView.findViewById(R.id.txtTitulo)
+        val badgeBorrador: TextView = itemView.findViewById(R.id.badgeBorrador)
         val txtDescripcion: TextView = itemView.findViewById(R.id.txtDescripcion)
         val txtFecha: TextView = itemView.findViewById(R.id.txtFecha)
         val btnLike: ImageView = itemView.findViewById(R.id.btnLike)
@@ -43,49 +44,75 @@ class PublicacionesPerfilAdapter(
         val btnComment: ImageView = itemView.findViewById(R.id.btnComment)
         val txtComments: TextView = itemView.findViewById(R.id.txtComments)
         val btnFavorite: ImageView = itemView.findViewById(R.id.btnFavorite)
+        val layoutAcciones: LinearLayout = itemView.findViewById(R.id.layoutAcciones)
 
         fun bind(publicacion: Publicacion) {
+            // Detectar si es un borrador
+            val esBorrador = publicacion.id.startsWith("draft_")
+
             // Configurar usuario
             txtUsuarioNombre.text = publicacion.usuarioNombre
             imgUsuarioPerfil.setImageResource(R.drawable.user)
             txtTitulo.text = publicacion.titulo
             txtDescripcion.text = publicacion.descripcion
             txtFecha.text = publicacion.fecha
-            txtLikes.text = publicacion.likes.toString()
-            txtDislikes.text = publicacion.dislikes.toString()
-            txtComments.text = publicacion.comentarios.toString()
 
-            // Configurar apariencia del botón Like
-            if (publicacion.usuarioLike) {
-                btnLike.setColorFilter(
-                    ContextCompat.getColor(itemView.context, R.color.like_activo)
-                )
+            // Mostrar/ocultar badge de borrador
+            if (esBorrador) {
+                badgeBorrador.visibility = View.VISIBLE
             } else {
-                btnLike.setColorFilter(
-                    ContextCompat.getColor(itemView.context, R.color.white)
-                )
+                badgeBorrador.visibility = View.GONE
             }
 
-            // Configurar apariencia del botón Dislike
-            if (publicacion.usuarioDislike) {
-                btnDislike.setColorFilter(
-                    ContextCompat.getColor(itemView.context, R.color.dislike_activo)
-                )
+            // Ocultar/mostrar botones de interacción según si es borrador
+            if (esBorrador) {
+                // Es borrador: ocultar todos los botones de interacción
+                layoutAcciones.visibility = View.GONE
             } else {
-                btnDislike.setColorFilter(
-                    ContextCompat.getColor(itemView.context, R.color.white)
-                )
-            }
+                // Es publicación: mostrar botones normalmente
+                layoutAcciones.visibility = View.VISIBLE
+                txtLikes.text = publicacion.likes.toString()
+                txtDislikes.text = publicacion.dislikes.toString()
+                txtComments.text = publicacion.comentarios.toString()
 
-            // Configurar apariencia del botón Favorito
-            if (publicacion.usuarioFavorito) {
-                btnFavorite.setColorFilter(
-                    ContextCompat.getColor(itemView.context, R.color.favorito_activo)
-                )
-            } else {
-                btnFavorite.setColorFilter(
-                    ContextCompat.getColor(itemView.context, R.color.white)
-                )
+                // Configurar apariencia del botón Like
+                if (publicacion.usuarioLike) {
+                    btnLike.setColorFilter(
+                        ContextCompat.getColor(itemView.context, R.color.like_activo)
+                    )
+                } else {
+                    btnLike.setColorFilter(
+                        ContextCompat.getColor(itemView.context, R.color.white)
+                    )
+                }
+
+                // Configurar apariencia del botón Dislike
+                if (publicacion.usuarioDislike) {
+                    btnDislike.setColorFilter(
+                        ContextCompat.getColor(itemView.context, R.color.dislike_activo)
+                    )
+                } else {
+                    btnDislike.setColorFilter(
+                        ContextCompat.getColor(itemView.context, R.color.white)
+                    )
+                }
+
+                // Configurar apariencia del botón Favorito
+                if (publicacion.usuarioFavorito) {
+                    btnFavorite.setColorFilter(
+                        ContextCompat.getColor(itemView.context, R.color.favorito_activo)
+                    )
+                } else {
+                    btnFavorite.setColorFilter(
+                        ContextCompat.getColor(itemView.context, R.color.white)
+                    )
+                }
+
+                // Listeners de acciones (solo para publicaciones)
+                btnLike.setOnClickListener { onLikeClick(publicacion) }
+                btnDislike.setOnClickListener { onDislikeClick(publicacion) }
+                btnComment.setOnClickListener { onCommentClick(publicacion) }
+                btnFavorite.setOnClickListener { onFavoriteClick(publicacion) }
             }
 
             // Configurar ViewPager para imágenes
@@ -116,11 +143,6 @@ class PublicacionesPerfilAdapter(
                 btnMenu.visibility = View.GONE
             }
 
-            // Listeners de acciones
-            btnLike.setOnClickListener { onLikeClick(publicacion) }
-            btnDislike.setOnClickListener { onDislikeClick(publicacion) }
-            btnComment.setOnClickListener { onCommentClick(publicacion) }
-            btnFavorite.setOnClickListener { onFavoriteClick(publicacion) }
             itemView.setOnClickListener { onPublicacionClick(publicacion) }
         }
 
