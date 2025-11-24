@@ -208,24 +208,29 @@ class PerfilFragment : Fragment() {
         when (tab) {
             TabActivo.PUBLICACIONES -> {
                 headerAdapter.actualizarTitulo("Mis Publicaciones")
-                // Solo publicaciones del usuario actual
+                // ✅ CAMBIO: Filtrar y guardar en variable antes de mostrar
                 val misPublicaciones = todasPublicaciones.filter {
                     it.usuarioId == idUsuarioActual.toString()
-                }
+                }.toMutableList() // ← Importante: crear nueva lista mutable
+
                 mostrarPublicaciones(misPublicaciones)
+
+                // ✅ NUEVO: Forzar actualización visual del RecyclerView
+                recyclerView.post {
+                    publicacionesAdapter.notifyDataSetChanged()
+                }
             }
             TabActivo.FAVORITOS -> {
                 headerAdapter.actualizarTitulo("Mis Favoritos")
-                // Cargar favoritos desde el servidor
                 cargarFavoritosDesdeServidor()
             }
             TabActivo.BORRADORES -> {
                 headerAdapter.actualizarTitulo("Mis Borradores")
-                // Cargar borradores desde la base de datos local
                 cargarBorradoresLocales()
             }
         }
     }
+
 
     private fun cargarBorradoresLocales() {
         lifecycleScope.launch {
@@ -480,7 +485,16 @@ class PerfilFragment : Fragment() {
         }
     }
     private fun mostrarPublicaciones(publicaciones: List<Publicacion>) {
-        publicacionesAdapter.updatePublicaciones(publicaciones)
+        // ✅ CAMBIO: Forzar que el adapter suelte referencias viejas
+        publicacionesAdapter.updatePublicaciones(emptyList())
+
+        // Pequeño delay para que el RecyclerView limpie las vistas
+        recyclerView.postDelayed({
+            publicacionesAdapter.updatePublicaciones(publicaciones)
+
+            // ✅ NUEVO: Forzar scroll al inicio para triggear el bind
+            recyclerView.scrollToPosition(0)
+        }, 50)
     }
 
     // ==================== MANEJO DE REACCIONES ====================
