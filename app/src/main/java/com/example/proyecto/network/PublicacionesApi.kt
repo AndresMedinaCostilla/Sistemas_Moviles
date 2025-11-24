@@ -34,6 +34,14 @@ interface PublicacionesApi {
     ): Response<ObtenerPublicacionesResponse>
 
     /**
+     * Obtener favoritos de un usuario
+     */
+    @GET("api/publicaciones/favoritos/{id}")
+    suspend fun obtenerFavoritosUsuario(
+        @Path("id") userId: Int
+    ): Response<ObtenerPublicacionesResponse>
+
+    /**
      * Eliminar una publicación
      */
     @DELETE("api/publicaciones/{id}")

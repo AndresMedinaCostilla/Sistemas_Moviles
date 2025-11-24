@@ -208,11 +208,83 @@ class PerfilFragment : Fragment() {
             }
             TabActivo.FAVORITOS -> {
                 headerAdapter.actualizarTitulo("Mis Favoritos")
-                mostrarPublicaciones(publicacionesFavoritas)
+                // Cargar favoritos desde el servidor
+                cargarFavoritosDesdeServidor()
             }
             TabActivo.BORRADORES -> {
                 headerAdapter.actualizarTitulo("Mis Borradores")
                 mostrarPublicaciones(publicacionesBorradores)
+            }
+        }
+    }
+
+    private fun cargarFavoritosDesdeServidor() {
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        mostrarCargando(true)
+
+        lifecycleScope.launch {
+            try {
+                val response = RetrofitClient.publicacionesApi.obtenerFavoritosUsuario(idUsuarioActual)
+
+                if (response.isSuccessful && response.body() != null) {
+                    val responseBody = response.body()!!
+
+                    if (responseBody.success) {
+                        val baseUrl = RetrofitClient.BASE_URL.removeSuffix("/")
+
+                        publicacionesFavoritas = responseBody.data.map { pub ->
+                            val imagenesCompletas = pub.imagenes.map { url ->
+                                "$baseUrl$url"
+                            }
+
+                            val fotoPerfilUsuario = if (!pub.usuario?.foto_perfil.isNullOrEmpty()) {
+                                "$baseUrl${pub.usuario?.foto_perfil}"
+                            } else {
+                                null
+                            }
+
+                            Publicacion(
+                                id = pub.id_publicacion.toString(),
+                                titulo = pub.titulo,
+                                descripcion = pub.descripcion ?: "",
+                                imagenesUrl = imagenesCompletas,
+                                fecha = formatearFecha(pub.fecha_publicacion),
+                                likes = pub.cantidad_likes,
+                                dislikes = 0,
+                                comentarios = pub.cantidad_comentarios,
+                                favoritos = pub.cantidad_favoritos,
+                                usuarioId = pub.usuario?.id_usuario.toString() ?: "",
+                                usuarioNombre = pub.usuario?.usuario ?: "Usuario",
+                                usuarioFoto = fotoPerfilUsuario,
+                                usuarioLike = false,
+                                usuarioDislike = false,
+                                usuarioFavorito = true
+                            )
+                        }.toMutableList()
+
+                        // Cargar estado de reacciones para los favoritos
+                        cargarEstadoReacciones(publicacionesFavoritas)
+
+                        mostrarCargando(false)
+                        mostrarPublicaciones(publicacionesFavoritas)
+                    } else {
+                        mostrarCargando(false)
+                        publicacionesFavoritas.clear()
+                        mostrarPublicaciones(publicacionesFavoritas)
+                        Toast.makeText(context, "No tienes favoritos aún", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    mostrarCargando(false)
+                    Toast.makeText(context, "Error al cargar favoritos", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                mostrarCargando(false)
+                e.printStackTrace()
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -227,7 +299,6 @@ class PerfilFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                // Cargar todas las publicaciones
                 val response = RetrofitClient.publicacionesApi.obtenerPublicaciones()
 
                 if (response.isSuccessful && response.body() != null) {
@@ -236,27 +307,14 @@ class PerfilFragment : Fragment() {
                     if (responseBody.success) {
                         val baseUrl = RetrofitClient.BASE_URL.removeSuffix("/")
 
-                        println("🌐 Base URL: $baseUrl")
-
                         todasPublicaciones = responseBody.data.map { pub ->
-                            // 🔍 DEBUG: Imprimir datos del usuario
-                            println("📋 Publicación: ${pub.titulo}")
-                            println("   Usuario ID: ${pub.usuario?.id_usuario}")
-                            println("   Usuario Nombre: ${pub.usuario?.usuario}")
-                            println("   Foto Perfil RAW: ${pub.usuario?.foto_perfil}")
-
                             val imagenesCompletas = pub.imagenes.map { url ->
-                                val fullUrl = "$baseUrl$url"
-                                println("   🖼️ Imagen publicación: $fullUrl")
-                                fullUrl
+                                "$baseUrl$url"
                             }
 
                             val fotoPerfilUsuario = if (!pub.usuario?.foto_perfil.isNullOrEmpty()) {
-                                val fullUrl = "$baseUrl${pub.usuario?.foto_perfil}"
-                                println("   👤 Foto perfil COMPLETA: $fullUrl")
-                                fullUrl
+                                "$baseUrl${pub.usuario?.foto_perfil}"
                             } else {
-                                println("   ⚠️ NO hay foto de perfil para este usuario")
                                 null
                             }
 
@@ -279,13 +337,8 @@ class PerfilFragment : Fragment() {
                             )
                         }.toMutableList()
 
-                        println("✅ Total publicaciones cargadas: ${todasPublicaciones.size}")
-
                         // Cargar estado de reacciones
                         cargarEstadoReacciones(todasPublicaciones)
-
-                        // Cargar favoritos del usuario
-                        cargarFavoritos()
 
                         // Mostrar publicaciones del usuario
                         seleccionarTab(TabActivo.PUBLICACIONES)
@@ -297,12 +350,10 @@ class PerfilFragment : Fragment() {
                     }
                 } else {
                     mostrarCargando(false)
-                    println("❌ Error en respuesta: ${response.code()} - ${response.message()}")
                     Toast.makeText(context, "Error al cargar publicaciones", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 mostrarCargando(false)
-                println("❌ Excepción al cargar publicaciones: ${e.message}")
                 e.printStackTrace()
                 Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -329,25 +380,11 @@ class PerfilFragment : Fragment() {
                         }
                     }
                 } catch (e: Exception) {
-                    println("❌ Error al obtener estado de publicación ${pub.id}: ${e.message}")
+                    // Error silencioso para no interrumpir la carga
                 }
             }
 
             publicacionesAdapter.notifyDataSetChanged()
-        }
-    }
-
-    private fun cargarFavoritos() {
-        lifecycleScope.launch {
-            try {
-                // Filtrar publicaciones favoritas basándose en el estado
-                publicacionesFavoritas = todasPublicaciones.filter {
-                    it.usuarioFavorito
-                }.toMutableList()
-
-            } catch (e: Exception) {
-                println("❌ Error al cargar favoritos: ${e.message}")
-            }
         }
     }
 
@@ -482,31 +519,45 @@ class PerfilFragment : Fragment() {
                         publicacion.favoritos = data.favoritos
                         publicacion.usuarioFavorito = data.es_favorito
 
-                        // Actualizar lista de favoritos
-                        if (data.es_favorito) {
-                            if (!publicacionesFavoritas.contains(publicacion)) {
-                                publicacionesFavoritas.add(publicacion)
+                        // Si estamos en la pestaña de favoritos
+                        if (tabActual == TabActivo.FAVORITOS) {
+                            if (!data.es_favorito) {
+                                // Si se quitó el favorito, eliminar de la lista y recargar
+                                publicacionesFavoritas.removeAll { it.id == publicacion.id }
+                                mostrarPublicaciones(publicacionesFavoritas)
+
+                                Toast.makeText(
+                                    context,
+                                    "Eliminado de favoritos",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                // Actualizar el item
+                                val position = publicacionesAdapter.publicaciones.indexOf(publicacion)
+                                if (position != -1) {
+                                    publicacionesAdapter.notifyItemChanged(position)
+                                }
+
+                                Toast.makeText(
+                                    context,
+                                    "⭐ Agregado a favoritos",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         } else {
-                            publicacionesFavoritas.removeAll { it.id == publicacion.id }
-                        }
+                            // Si estamos en otra pestaña, solo actualizar el contador
+                            val position = publicacionesAdapter.publicaciones.indexOf(publicacion)
+                            if (position != -1) {
+                                publicacionesAdapter.notifyItemChanged(position)
+                            }
 
-                        val position = publicacionesAdapter.publicaciones.indexOf(publicacion)
-                        if (position != -1) {
-                            publicacionesAdapter.notifyItemChanged(position)
+                            val mensaje = if (data.es_favorito) {
+                                "⭐ Agregado a favoritos"
+                            } else {
+                                "Eliminado de favoritos"
+                            }
+                            Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
                         }
-
-                        // Si estamos en la pestaña de favoritos, actualizar la vista
-                        if (tabActual == TabActivo.FAVORITOS) {
-                            seleccionarTab(TabActivo.FAVORITOS)
-                        }
-
-                        val mensaje = if (data.es_favorito) {
-                            "⭐ Agregado a favoritos"
-                        } else {
-                            "Eliminado de favoritos"
-                        }
-                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Toast.makeText(context, "Error al procesar favorito", Toast.LENGTH_SHORT).show()
@@ -519,11 +570,9 @@ class PerfilFragment : Fragment() {
     }
 
     private fun eliminarPublicacion(publicacion: Publicacion) {
-        // Determinar si es borrador o publicación
         val esBorrador = publicacion.id.startsWith("draft_")
 
         if (esBorrador) {
-            // Eliminar de borradores
             publicacionesBorradores.removeAll { it.id == publicacion.id }
             Toast.makeText(
                 context,
@@ -532,7 +581,6 @@ class PerfilFragment : Fragment() {
             ).show()
             seleccionarTab(tabActual)
         } else {
-            // Eliminar publicación del servidor
             if (!NetworkUtils.isInternetAvailable(requireContext())) {
                 Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
                 return
@@ -548,7 +596,6 @@ class PerfilFragment : Fragment() {
                         val responseBody = response.body()!!
 
                         if (responseBody.success) {
-                            // Eliminar de las listas locales
                             todasPublicaciones.removeAll { it.id == publicacion.id }
                             publicacionesFavoritas.removeAll { it.id == publicacion.id }
 
@@ -558,7 +605,6 @@ class PerfilFragment : Fragment() {
                                 Toast.LENGTH_SHORT
                             ).show()
 
-                            // Actualizar vista
                             seleccionarTab(tabActual)
                         } else {
                             Toast.makeText(
@@ -597,7 +643,8 @@ class PerfilFragment : Fragment() {
         }
     }
 
-    // Adapter para el header (sin cambios)
+    // ==================== HEADER ADAPTER ====================
+
     inner class HeaderAdapter(
         private val sessionManager: SessionManager,
         private val onEditarClick: () -> Unit,
