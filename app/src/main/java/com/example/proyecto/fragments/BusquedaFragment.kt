@@ -44,7 +44,11 @@ class BusquedaFragment : Fragment() {
     private lateinit var adapter: PublicacionesAdapter
     private lateinit var sessionManager: SessionManager
 
-    // Nuevas vistas para sin conexión
+    // Botones de ordenamiento
+    private lateinit var btnOrdenReciente: Button
+    private lateinit var btnOrdenAntiguo: Button
+
+    // Vistas para sin conexión
     private lateinit var layoutSinConexion: View
     private lateinit var btnReintentar: Button
     private lateinit var searchBar: LinearLayout
@@ -53,6 +57,13 @@ class BusquedaFragment : Fragment() {
     private var todasLasPublicaciones = mutableListOf<Publicacion>()
     private var publicacionesFavoritasLocales = mutableSetOf<String>()
     private var idUsuarioActual: Int = 0
+
+    // Enum para el tipo de ordenamiento
+    private enum class TipoOrden {
+        MAS_RECIENTE,
+        MAS_ANTIGUO
+    }
+    private var ordenActual = TipoOrden.MAS_RECIENTE
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -83,6 +94,10 @@ class BusquedaFragment : Fragment() {
         progressBar = view.findViewById(R.id.progressBar)
         searchBar = view.findViewById(R.id.searchBar)
 
+        // Botones de ordenamiento
+        btnOrdenReciente = view.findViewById(R.id.btnOrdenReciente)
+        btnOrdenAntiguo = view.findViewById(R.id.btnOrdenAntiguo)
+
         // Vistas de sin conexión
         layoutSinConexion = view.findViewById(R.id.layoutSinConexion)
         btnReintentar = view.findViewById(R.id.btnReintentar)
@@ -90,6 +105,7 @@ class BusquedaFragment : Fragment() {
         setupRecyclerView()
         setupBusqueda()
         setupToggleFavoritos()
+        setupBotonesOrdenamiento()
 
         // Configurar botón de reintentar
         btnReintentar.setOnClickListener {
@@ -98,6 +114,71 @@ class BusquedaFragment : Fragment() {
 
         // Verificar conexión antes de cargar
         verificarConexionYCargar()
+    }
+
+    // ==================== SETUP ORDENAMIENTO ====================
+
+    private fun setupBotonesOrdenamiento() {
+        // Inicializar estado de botones
+        actualizarEstadoBotonesOrden()
+
+        btnOrdenReciente.setOnClickListener {
+            if (ordenActual != TipoOrden.MAS_RECIENTE) {
+                ordenActual = TipoOrden.MAS_RECIENTE
+                actualizarEstadoBotonesOrden()
+                actualizarResultados(etBuscar.text.toString())
+            }
+        }
+
+        btnOrdenAntiguo.setOnClickListener {
+            if (ordenActual != TipoOrden.MAS_ANTIGUO) {
+                ordenActual = TipoOrden.MAS_ANTIGUO
+                actualizarEstadoBotonesOrden()
+                actualizarResultados(etBuscar.text.toString())
+            }
+        }
+    }
+
+    private fun actualizarEstadoBotonesOrden() {
+        when (ordenActual) {
+            TipoOrden.MAS_RECIENTE -> {
+                btnOrdenReciente.isSelected = true
+                btnOrdenReciente.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
+
+                btnOrdenAntiguo.isSelected = false
+                btnOrdenAntiguo.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
+            }
+            TipoOrden.MAS_ANTIGUO -> {
+                btnOrdenAntiguo.isSelected = true
+                btnOrdenAntiguo.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
+
+                btnOrdenReciente.isSelected = false
+                btnOrdenReciente.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray))
+            }
+        }
+    }
+
+    private fun ordenarPublicaciones(publicaciones: List<Publicacion>): List<Publicacion> {
+        return when (ordenActual) {
+            TipoOrden.MAS_RECIENTE -> {
+                // Ordenar por fecha descendente (más recientes primero)
+                publicaciones.sortedByDescending { parsearFecha(it.fecha) }
+            }
+            TipoOrden.MAS_ANTIGUO -> {
+                // Ordenar por fecha ascendente (más antiguos primero)
+                publicaciones.sortedBy { parsearFecha(it.fecha) }
+            }
+        }
+    }
+
+    private fun parsearFecha(fechaFormateada: String): Long {
+        return try {
+            // Formato: "dd 'de' MMM yyyy, h:mm a"
+            val format = SimpleDateFormat("dd 'de' MMM yyyy, h:mm a", Locale("es", "MX"))
+            format.parse(fechaFormateada)?.time ?: 0L
+        } catch (e: Exception) {
+            0L // Si falla, devolver 0 para mantenerlo al final
+        }
     }
 
     // ==================== VERIFICACIÓN Y CARGA ====================
@@ -479,7 +560,7 @@ class BusquedaFragment : Fragment() {
             todasLasPublicaciones
         }
 
-        val resultados = if (query.isEmpty()) {
+        val publicacionesFiltradas = if (query.isEmpty()) {
             publicacionesBase
         } else {
             publicacionesBase.filter {
@@ -488,6 +569,9 @@ class BusquedaFragment : Fragment() {
                         it.usuarioNombre.contains(query, ignoreCase = true)
             }
         }
+
+        // ✨ Aplicar ordenamiento
+        val resultados = ordenarPublicaciones(publicacionesFiltradas)
 
         if (resultados.isEmpty()) {
             recyclerResultados.visibility = View.GONE

@@ -78,6 +78,56 @@
 
         </LinearLayout>
 
+        <!-- ✨ NUEVO: Filtros de ordenamiento -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="12dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ordenar por:"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp"
+                android:layout_marginEnd="12dp" />
+
+            <!-- Botón Más recientes -->
+            <Button
+                android:id="@+id/btnOrdenReciente"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/filter_button_bg"
+                android:text="Más recientes"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textAllCaps="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+
+            <!-- Botón Más antiguos -->
+            <Button
+                android:id="@+id/btnOrdenAntiguo"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/filter_button_bg"
+                android:text="Más antiguos"
+                android:textColor="#AAAAAA"
+                android:textSize="11sp"
+                android:textAllCaps="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+
+        </LinearLayout>
+
         <!-- Indicador de filtro activo -->
         <TextView
             android:id="@+id/txtFiltroActivo"
@@ -154,7 +204,7 @@
 
     </LinearLayout>
 
-    <!-- ✅ NUEVO: Vista de sin conexión (incluye el layout completo) -->
+    <!-- Vista de sin conexión -->
     <include
         android:id="@+id/layoutSinConexion"
         layout="@layout/layout_sin_conexion"

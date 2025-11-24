@@ -1,6 +1,8 @@
 package com.example.proyecto.fragments
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,6 +10,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -26,6 +29,10 @@ class LoginFragment : Fragment() {
 
     // SessionManager para guardar la sesión
     private lateinit var sessionManager: SessionManager
+
+    // Variables para el doble tap para salir
+    private var backPressedOnce = false
+    private val backPressHandler = Handler(Looper.getMainLooper())
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -53,6 +60,9 @@ class LoginFragment : Fragment() {
         btnIniciarSesion = view.findViewById(R.id.btnIniciarSesion)
         txtRegistro = view.findViewById(R.id.txtRegistro)
 
+        // Configurar el manejo del botón atrás
+        configurarBackPressed()
+
         // Botón de Login
         btnIniciarSesion.setOnClickListener {
             iniciarSesion()
@@ -62,6 +72,33 @@ class LoginFragment : Fragment() {
         txtRegistro.setOnClickListener {
             findNavController().navigate(R.id.action_loginFragment_to_registerFragment)
         }
+    }
+
+    private fun configurarBackPressed() {
+        requireActivity().onBackPressedDispatcher.addCallback(
+            viewLifecycleOwner,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (backPressedOnce) {
+                        // Segunda vez presionado: salir de la app
+                        requireActivity().finish()
+                    } else {
+                        // Primera vez presionado: mostrar mensaje
+                        backPressedOnce = true
+                        Toast.makeText(
+                            requireContext(),
+                            "Presiona atrás nuevamente para salir",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        // Resetear después de 2 segundos
+                        backPressHandler.postDelayed({
+                            backPressedOnce = false
+                        }, 2000)
+                    }
+                }
+            }
+        )
     }
 
     private fun iniciarSesion() {
@@ -124,5 +161,11 @@ class LoginFragment : Fragment() {
                 btnIniciarSesion.text = "Iniciar sesión"
             }
         }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Limpiar el handler para evitar memory leaks
+        backPressHandler.removeCallbacksAndMessages(null)
     }
 }
