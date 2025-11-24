@@ -30,6 +30,7 @@ import com.example.proyecto.R
 import com.example.proyecto.adapters.ImagenesAdapter
 import com.example.proyecto.network.RetrofitClient
 import com.example.proyecto.utils.SessionManager
+import com.example.proyecto.utils.NetworkUtils
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -163,7 +164,8 @@ class EditarPublicacionFragment : Fragment() {
             tituloOriginal = titulo
             contenidoOriginal = contenido
 
-            // TODO: Cargar imágenes cuando implementes la persistencia
+            // TODO: Cargar imágenes existentes si las hay
+            // Por ahora, el usuario deberá volver a seleccionar las imágenes
 
             actualizarVistaImagenes()
         }
@@ -221,8 +223,7 @@ class EditarPublicacionFragment : Fragment() {
 
         return tituloActual != tituloOriginal ||
                 contenidoActual != contenidoOriginal ||
-                imagenesSeleccionadas.size != imagenesOriginales.size ||
-                !imagenesSeleccionadas.containsAll(imagenesOriginales)
+                imagenesSeleccionadas.isNotEmpty() // Si hay nuevas imágenes, hay cambios
     }
 
     private fun mostrarDialogoSalir() {
@@ -314,7 +315,6 @@ class EditarPublicacionFragment : Fragment() {
             return
         }
 
-        // Mostrar diálogo de confirmación
         AlertDialog.Builder(requireContext())
             .setTitle("Guardar como borrador")
             .setMessage("La publicación se guardará como borrador y se desactivará hasta que la publiques. ¿Deseas continuar?")
@@ -337,7 +337,7 @@ class EditarPublicacionFragment : Fragment() {
                 println("📝 DEBUG - contenido: $contenido")
 
                 // TODO: Implementar llamada al API para convertir publicación en borrador
-                // val response = RetrofitClient.publicacionesApi.convertirABorrador(publicacionId, ...)
+                // Necesitarás crear un endpoint en el servidor para esto
 
                 Toast.makeText(
                     context,
@@ -375,23 +375,25 @@ class EditarPublicacionFragment : Fragment() {
             }
         }
 
+        // Verificar conexión a internet
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         // Mostrar progreso
         btnActualizar.isEnabled = false
         btnActualizar.text = "Actualizando..."
 
         lifecycleScope.launch {
             try {
-                val userId = sessionManager.getUserId()
-
                 println("📝 DEBUG - Actualizando publicación")
                 println("📝 DEBUG - publicacionId: $publicacionId")
-                println("📝 DEBUG - userId: $userId")
                 println("📝 DEBUG - titulo: $titulo")
                 println("📝 DEBUG - contenido: $contenido")
+                println("📝 DEBUG - imágenes: ${imagenesSeleccionadas.size}")
 
                 // Preparar datos
-                val idPublicacionBody = publicacionId.toRequestBody("text/plain".toMediaTypeOrNull())
-                val idUsuarioBody = userId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                 val tituloBody = titulo.toRequestBody("text/plain".toMediaTypeOrNull())
                 val descripcionBody = contenido.toRequestBody("text/plain".toMediaTypeOrNull())
 
@@ -406,16 +408,42 @@ class EditarPublicacionFragment : Fragment() {
                     }
                 }
 
-                // TODO: Implementar llamada al API
-                // val response = RetrofitClient.publicacionesApi.actualizarPublicacion(...)
+                println("📝 DEBUG - Parts de imágenes creados: ${imagenesParts.size}")
 
-                // Por ahora, simular éxito
-                Toast.makeText(
-                    context,
-                    "Publicación actualizada exitosamente",
-                    Toast.LENGTH_SHORT
-                ).show()
-                findNavController().navigateUp()
+                // Llamar al API
+                val response = RetrofitClient.publicacionesApi.actualizarPublicacion(
+                    idPublicacion = publicacionId.toInt(),
+                    titulo = tituloBody,
+                    descripcion = descripcionBody,
+                    imagenes = if (imagenesParts.isNotEmpty()) imagenesParts else null
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val responseBody = response.body()!!
+
+                    if (responseBody.success) {
+                        Toast.makeText(
+                            context,
+                            "✅ ${responseBody.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        findNavController().navigateUp()
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Error: ${responseBody.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    println("❌ Error response: $errorBody")
+                    Toast.makeText(
+                        context,
+                        "Error al actualizar: ${response.code()}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
 
             } catch (e: Exception) {
                 Toast.makeText(

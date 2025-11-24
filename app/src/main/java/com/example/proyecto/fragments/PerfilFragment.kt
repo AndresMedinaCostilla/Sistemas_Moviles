@@ -1,5 +1,6 @@
 package com.example.proyecto.fragments
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -658,82 +659,105 @@ class PerfilFragment : Fragment() {
     private fun eliminarPublicacion(publicacion: Publicacion) {
         val esBorrador = publicacion.id.startsWith("draft_")
 
-        if (esBorrador) {
-            // Extraer el ID del borrador
-            val idBorrador = publicacion.id.removePrefix("draft_").toIntOrNull()
-
-            if (idBorrador != null) {
-                lifecycleScope.launch {
-                    try {
-                        publicacionRepository.eliminarBorrador(idBorrador)
-                        publicacionesBorradores.removeAll { it.id == publicacion.id }
-
-                        Toast.makeText(
-                            context,
-                            "Borrador \"${publicacion.titulo}\" eliminado",
-                            Toast.LENGTH_SHORT
-                        ).show()
-
-                        seleccionarTab(tabActual)
-                    } catch (e: Exception) {
-                        Toast.makeText(
-                            context,
-                            "Error al eliminar borrador",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        e.printStackTrace()
-                    }
+        // Mostrar diálogo de confirmación
+        AlertDialog.Builder(requireContext())
+            .setTitle("Eliminar ${if (esBorrador) "borrador" else "publicación"}")
+            .setMessage("¿Estás seguro de que deseas eliminar \"${publicacion.titulo}\"? Esta acción no se puede deshacer.")
+            .setPositiveButton("Eliminar") { _, _ ->
+                if (esBorrador) {
+                    eliminarBorrador(publicacion)
+                } else {
+                    eliminarPublicacionServidor(publicacion)
                 }
             }
-        } else {
-            // Código existente para eliminar publicaciones del servidor
-            if (!NetworkUtils.isInternetAvailable(requireContext())) {
-                Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
-                return
-            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
 
+    private fun eliminarBorrador(publicacion: Publicacion) {
+        val idBorrador = publicacion.id.removePrefix("draft_").toIntOrNull()
+
+        if (idBorrador != null) {
             lifecycleScope.launch {
                 try {
-                    val response = RetrofitClient.publicacionesApi.eliminarPublicacion(
-                        publicacion.id.toInt()
-                    )
+                    publicacionRepository.eliminarBorrador(idBorrador)
+                    publicacionesBorradores.removeAll { it.id == publicacion.id }
 
-                    if (response.isSuccessful && response.body() != null) {
-                        val responseBody = response.body()!!
+                    Toast.makeText(
+                        context,
+                        "✅ Borrador \"${publicacion.titulo}\" eliminado",
+                        Toast.LENGTH_SHORT
+                    ).show()
 
-                        if (responseBody.success) {
-                            todasPublicaciones.removeAll { it.id == publicacion.id }
-                            publicacionesFavoritas.removeAll { it.id == publicacion.id }
-
-                            Toast.makeText(
-                                context,
-                                "\"${publicacion.titulo}\" eliminada correctamente",
-                                Toast.LENGTH_SHORT
-                            ).show()
-
-                            seleccionarTab(tabActual)
-                        } else {
-                            Toast.makeText(
-                                context,
-                                "Error: ${responseBody.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "Error al eliminar la publicación",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    // Actualizar vista
+                    seleccionarTab(tabActual)
                 } catch (e: Exception) {
                     Toast.makeText(
                         context,
-                        "Error: ${e.message}",
+                        "❌ Error al eliminar borrador",
                         Toast.LENGTH_SHORT
                     ).show()
                     e.printStackTrace()
                 }
+            }
+        } else {
+            Toast.makeText(context, "Error: ID de borrador inválido", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun eliminarPublicacionServidor(publicacion: Publicacion) {
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                println("🗑️ Eliminando publicación ID: ${publicacion.id}")
+
+                val response = RetrofitClient.publicacionesApi.eliminarPublicacion(
+                    publicacion.id.toInt()
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val responseBody = response.body()!!
+
+                    if (responseBody.success) {
+                        // Eliminar de todas las listas
+                        todasPublicaciones.removeAll { it.id == publicacion.id }
+                        publicacionesFavoritas.removeAll { it.id == publicacion.id }
+
+                        Toast.makeText(
+                            context,
+                            "✅ \"${publicacion.titulo}\" eliminada correctamente",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        // Actualizar vista según el tab actual
+                        seleccionarTab(tabActual)
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "❌ Error: ${responseBody.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    println("❌ Error al eliminar: $errorBody")
+                    Toast.makeText(
+                        context,
+                        "❌ Error al eliminar la publicación (Código: ${response.code()})",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "❌ Error: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                e.printStackTrace()
             }
         }
     }
