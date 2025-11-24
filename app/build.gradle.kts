@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 android {
@@ -41,6 +43,13 @@ android {
 }
 
 dependencies {
+
+    // 1. Importar el BoM de Firebase (DEBE ir primero)
+    // Usa 'platform' para tomar las versiones de 'firebaseBom' en tu TOML
+    implementation(platform(libs.firebase.bom))
+
+    // 2. Dependencia de Crashlytics (la versión viene del BoM)
+    implementation(libs.firebase.crashlytics)
     // Room Database
     val room_version = "2.6.1"
     implementation("androidx.room:room-runtime:$room_version")
