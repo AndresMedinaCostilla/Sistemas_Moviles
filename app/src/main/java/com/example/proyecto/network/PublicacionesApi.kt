@@ -32,6 +32,26 @@ interface PublicacionesApi {
     suspend fun obtenerPublicacionesUsuario(
         @Path("id") userId: Int
     ): Response<ObtenerPublicacionesResponse>
+
+    /**
+     * Eliminar una publicación
+     */
+    @DELETE("api/publicaciones/{id}")
+    suspend fun eliminarPublicacion(
+        @Path("id") idPublicacion: Int
+    ): Response<EliminarPublicacionResponse>
+
+    /**
+     * Actualizar una publicación
+     */
+    @Multipart
+    @PUT("api/publicaciones/{id}")
+    suspend fun actualizarPublicacion(
+        @Path("id") idPublicacion: Int,
+        @Part("titulo") titulo: RequestBody,
+        @Part("descripcion") descripcion: RequestBody,
+        @Part imagenes: List<MultipartBody.Part>?
+    ): Response<ActualizarPublicacionResponse>
 }
 
 // ==================== DATA CLASSES ====================
@@ -51,6 +71,23 @@ data class CrearPublicacionResponse(
 data class ObtenerPublicacionesResponse(
     val success: Boolean,
     val data: List<PublicacionResponse>
+)
+
+/**
+ * Response al eliminar publicación
+ */
+data class EliminarPublicacionResponse(
+    val success: Boolean,
+    val message: String
+)
+
+/**
+ * Response al actualizar publicación
+ */
+data class ActualizarPublicacionResponse(
+    val success: Boolean,
+    val message: String,
+    val publicacion: PublicacionResponse?
 )
 
 /**

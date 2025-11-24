@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
+import com.bumptech.glide.Glide
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
@@ -52,7 +53,25 @@ class PublicacionesPerfilAdapter(
 
             // Configurar usuario
             txtUsuarioNombre.text = publicacion.usuarioNombre
-            imgUsuarioPerfil.setImageResource(R.drawable.user)
+
+            // 🔍 DEBUG: Imprimir información de la foto de perfil
+            println("👤 Cargando foto de perfil para: ${publicacion.usuarioNombre}")
+            println("   URL foto: ${publicacion.usuarioFoto}")
+
+            // Cargar foto de perfil del usuario
+            if (!publicacion.usuarioFoto.isNullOrEmpty()) {
+                println("   ✅ Cargando con Glide: ${publicacion.usuarioFoto}")
+                Glide.with(itemView.context)
+                    .load(publicacion.usuarioFoto)
+                    .placeholder(R.drawable.user)
+                    .error(R.drawable.user)
+                    .circleCrop()
+                    .into(imgUsuarioPerfil)
+            } else {
+                println("   ⚠️ Sin foto, usando imagen por defecto")
+                imgUsuarioPerfil.setImageResource(R.drawable.user)
+            }
+
             txtTitulo.text = publicacion.titulo
             txtDescripcion.text = publicacion.descripcion
             txtFecha.text = publicacion.fecha
@@ -66,10 +85,8 @@ class PublicacionesPerfilAdapter(
 
             // Ocultar/mostrar botones de interacción según si es borrador
             if (esBorrador) {
-                // Es borrador: ocultar todos los botones de interacción
                 layoutAcciones.visibility = View.GONE
             } else {
-                // Es publicación: mostrar botones normalmente
                 layoutAcciones.visibility = View.VISIBLE
                 txtLikes.text = publicacion.likes.toString()
                 txtDislikes.text = publicacion.dislikes.toString()
@@ -108,7 +125,7 @@ class PublicacionesPerfilAdapter(
                     )
                 }
 
-                // Listeners de acciones (solo para publicaciones)
+                // Listeners de acciones
                 btnLike.setOnClickListener { onLikeClick(publicacion) }
                 btnDislike.setOnClickListener { onDislikeClick(publicacion) }
                 btnComment.setOnClickListener { onCommentClick(publicacion) }
@@ -117,6 +134,8 @@ class PublicacionesPerfilAdapter(
 
             // Configurar ViewPager para imágenes
             if (publicacion.imagenesUrl.isNotEmpty()) {
+                println("   🖼️ Cargando ${publicacion.imagenesUrl.size} imágenes de publicación")
+
                 val imagenesAdapter = ImagenesPublicacionUrlAdapter(publicacion.imagenesUrl)
                 viewPagerImagenes.adapter = imagenesAdapter
 

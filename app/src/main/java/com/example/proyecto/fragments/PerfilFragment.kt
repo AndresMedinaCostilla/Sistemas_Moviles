@@ -10,8 +10,10 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.ProgressBar
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -21,7 +23,13 @@ import com.example.proyecto.R
 import com.example.proyecto.adapters.PublicacionesPerfilAdapter
 import com.example.proyecto.models.Publicacion
 import com.example.proyecto.network.RetrofitClient
+import com.example.proyecto.network.ReaccionRequest
+import com.example.proyecto.network.FavoritoRequest
 import com.example.proyecto.utils.SessionManager
+import com.example.proyecto.utils.NetworkUtils
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class PerfilFragment : Fragment() {
 
@@ -31,6 +39,7 @@ class PerfilFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var headerAdapter: HeaderAdapter
     private lateinit var publicacionesAdapter: PublicacionesPerfilAdapter
+    private lateinit var progressBar: ProgressBar
 
     // Navegación inferior
     private lateinit var btnNavHome: ImageView
@@ -42,9 +51,9 @@ class PerfilFragment : Fragment() {
     private var tabActual = TabActivo.PUBLICACIONES
 
     private var todasPublicaciones = mutableListOf<Publicacion>()
-    private var publicacionesFavoritas = mutableSetOf<String>()
+    private var publicacionesFavoritas = mutableListOf<Publicacion>()
     private var publicacionesBorradores = mutableListOf<Publicacion>()
-    private var idUsuarioActual: String = ""
+    private var idUsuarioActual: Int = 0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -60,7 +69,12 @@ class PerfilFragment : Fragment() {
 
         // Obtener ID del usuario actual
         val userData = sessionManager.getUserData()
-        idUsuarioActual = userData?.idUsuario?.toString() ?: "0"
+        idUsuarioActual = userData?.idUsuario ?: 0
+
+        if (idUsuarioActual == 0) {
+            Toast.makeText(context, "Error: No hay sesión activa", Toast.LENGTH_LONG).show()
+            return
+        }
 
         inicializarVistas(view)
         configurarRecyclerView()
@@ -73,6 +87,7 @@ class PerfilFragment : Fragment() {
         btnNavHome = view.findViewById(R.id.btnNavHome)
         btnNavAdd = view.findViewById(R.id.btnNavAdd)
         btnNavSearch = view.findViewById(R.id.btnNavSearch)
+        progressBar = view.findViewById(R.id.progressBar) ?: ProgressBar(requireContext())
     }
 
     private fun configurarRecyclerView() {
@@ -99,12 +114,12 @@ class PerfilFragment : Fragment() {
         // Crear publicaciones adapter con opciones de editar/eliminar
         publicacionesAdapter = PublicacionesPerfilAdapter(
             publicaciones = emptyList(),
-            idUsuarioActual = idUsuarioActual,
+            idUsuarioActual = idUsuarioActual.toString(),
             onLikeClick = { publicacion ->
-                Toast.makeText(context, "Like en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+                manejarLike(publicacion)
             },
             onDislikeClick = { publicacion ->
-                Toast.makeText(context, "Dislike en: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
+                manejarDislike(publicacion)
             },
             onCommentClick = { publicacion ->
                 val bundle = Bundle().apply {
@@ -117,7 +132,7 @@ class PerfilFragment : Fragment() {
                 )
             },
             onFavoriteClick = { publicacion ->
-                toggleFavorito(publicacion)
+                manejarFavorito(publicacion)
             },
             onPublicacionClick = { publicacion ->
                 Toast.makeText(context, "Ver: ${publicacion.titulo}", Toast.LENGTH_SHORT).show()
@@ -186,163 +201,320 @@ class PerfilFragment : Fragment() {
             TabActivo.PUBLICACIONES -> {
                 headerAdapter.actualizarTitulo("Mis Publicaciones")
                 // Solo publicaciones del usuario actual
-                val misPublicaciones = todasPublicaciones.filter { it.usuarioId == idUsuarioActual }
+                val misPublicaciones = todasPublicaciones.filter {
+                    it.usuarioId == idUsuarioActual.toString()
+                }
                 mostrarPublicaciones(misPublicaciones)
             }
             TabActivo.FAVORITOS -> {
                 headerAdapter.actualizarTitulo("Mis Favoritos")
-                // Publicaciones favoritas (pueden ser de cualquier usuario)
-                val favoritos = todasPublicaciones.filter { publicacionesFavoritas.contains(it.id) }
-                mostrarPublicaciones(favoritos)
+                mostrarPublicaciones(publicacionesFavoritas)
             }
             TabActivo.BORRADORES -> {
                 headerAdapter.actualizarTitulo("Mis Borradores")
-                // Borradores del usuario actual
                 mostrarPublicaciones(publicacionesBorradores)
             }
         }
     }
 
     private fun cargarPublicaciones() {
-        // Publicaciones publicadas
-        todasPublicaciones = mutableListOf(
-            Publicacion(
-                id = "1",
-                titulo = "Mi primera publicación",
-                descripcion = "Esta publicación tiene 3 imágenes. Desliza para ver más.",
-                imagenesUrl = listOf("gato1", "user", "star"),
-                fecha = "20 de nov. 2025, 10:00 AM",
-                likes = 45,
-                dislikes = 3,
-                comentarios = 12,
-                favoritos = 5,
-                usuarioId = idUsuarioActual,
-                usuarioNombre = "Tú",
-                usuarioLike = false,
-                usuarioDislike = false,
-                usuarioFavorito = false
-            ),
-            Publicacion(
-                id = "2",
-                titulo = "Tutorial de Android",
-                descripcion = "Aprende a crear apps increíbles con Kotlin.",
-                imagenesUrl = listOf("home", "buscar"),
-                fecha = "21 de nov. 2025, 2:30 PM",
-                likes = 67,
-                dislikes = 5,
-                comentarios = 23,
-                favoritos = 8,
-                usuarioId = "999",  // Publicación de otro usuario
-                usuarioNombre = "Juan Pérez",
-                usuarioLike = false,
-                usuarioDislike = false,
-                usuarioFavorito = false
-            ),
-            Publicacion(
-                id = "3",
-                titulo = "Jetpack Compose",
-                descripcion = "Construye UIs modernas y declarativas.",
-                imagenesUrl = listOf("gato1"),
-                fecha = "21 de nov. 2025, 5:15 PM",
-                likes = 34,
-                dislikes = 2,
-                comentarios = 8,
-                favoritos = 3,
-                usuarioId = idUsuarioActual,
-                usuarioNombre = "Tú",
-                usuarioLike = false,
-                usuarioDislike = false,
-                usuarioFavorito = false
-            ),
-            Publicacion(
-                id = "4",
-                titulo = "MVVM Architecture",
-                descripcion = "Implementa el patrón MVVM en tus apps Android.",
-                imagenesUrl = listOf("add", "star", "like"),
-                fecha = "22 de nov. 2025, 9:00 AM",
-                likes = 89,
-                dislikes = 7,
-                comentarios = 31,
-                favoritos = 12,
-                usuarioId = "888",  // Publicación de otro usuario
-                usuarioNombre = "María López",
-                usuarioLike = false,
-                usuarioDislike = false,
-                usuarioFavorito = false
-            )
-        )
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
+        }
 
-        // Borradores (solo del usuario actual)
-        publicacionesBorradores = mutableListOf(
-            Publicacion(
-                id = "draft_1",
-                titulo = "Guía de Kotlin Coroutines",
-                descripcion = "Aprende a manejar operaciones asíncronas de forma eficiente. Este borrador necesita más detalles...",
-                imagenesUrl = listOf("gato1", "home"),
-                fecha = "Borrador guardado el 19 de nov. 2025",
-                likes = 0,
-                dislikes = 0,
-                comentarios = 0,
-                favoritos = 0,
-                usuarioId = idUsuarioActual,
-                usuarioNombre = "Tú",
-                usuarioLike = false,
-                usuarioDislike = false,
-                usuarioFavorito = false
-            ),
-            Publicacion(
-                id = "draft_2",
-                titulo = "Room Database Tutorial",
-                descripcion = "Persistencia local en Android con Room. [Incompleto]",
-                imagenesUrl = listOf("star"),
-                fecha = "Borrador guardado el 18 de nov. 2025",
-                likes = 0,
-                dislikes = 0,
-                comentarios = 0,
-                favoritos = 0,
-                usuarioId = idUsuarioActual,
-                usuarioNombre = "Tú",
-                usuarioLike = false,
-                usuarioDislike = false,
-                usuarioFavorito = false
-            ),
-            Publicacion(
-                id = "draft_3",
-                titulo = "Diseño Material 3",
-                descripcion = "Implementa Material You en tus aplicaciones Android...",
-                imagenesUrl = listOf("add", "buscar", "chat"),
-                fecha = "Borrador guardado el 17 de nov. 2025",
-                likes = 0,
-                dislikes = 0,
-                comentarios = 0,
-                favoritos = 0,
-                usuarioId = idUsuarioActual,
-                usuarioNombre = "Tú",
-                usuarioLike = false,
-                usuarioDislike = false,
-                usuarioFavorito = false
-            )
-        )
+        mostrarCargando(true)
 
-        publicacionesFavoritas.addAll(listOf("2", "4"))  // Las de otros usuarios están en favoritos
-        seleccionarTab(TabActivo.PUBLICACIONES)
+        lifecycleScope.launch {
+            try {
+                // Cargar todas las publicaciones
+                val response = RetrofitClient.publicacionesApi.obtenerPublicaciones()
+
+                if (response.isSuccessful && response.body() != null) {
+                    val responseBody = response.body()!!
+
+                    if (responseBody.success) {
+                        val baseUrl = RetrofitClient.BASE_URL.removeSuffix("/")
+
+                        println("🌐 Base URL: $baseUrl")
+
+                        todasPublicaciones = responseBody.data.map { pub ->
+                            // 🔍 DEBUG: Imprimir datos del usuario
+                            println("📋 Publicación: ${pub.titulo}")
+                            println("   Usuario ID: ${pub.usuario?.id_usuario}")
+                            println("   Usuario Nombre: ${pub.usuario?.usuario}")
+                            println("   Foto Perfil RAW: ${pub.usuario?.foto_perfil}")
+
+                            val imagenesCompletas = pub.imagenes.map { url ->
+                                val fullUrl = "$baseUrl$url"
+                                println("   🖼️ Imagen publicación: $fullUrl")
+                                fullUrl
+                            }
+
+                            val fotoPerfilUsuario = if (!pub.usuario?.foto_perfil.isNullOrEmpty()) {
+                                val fullUrl = "$baseUrl${pub.usuario?.foto_perfil}"
+                                println("   👤 Foto perfil COMPLETA: $fullUrl")
+                                fullUrl
+                            } else {
+                                println("   ⚠️ NO hay foto de perfil para este usuario")
+                                null
+                            }
+
+                            Publicacion(
+                                id = pub.id_publicacion.toString(),
+                                titulo = pub.titulo,
+                                descripcion = pub.descripcion ?: "",
+                                imagenesUrl = imagenesCompletas,
+                                fecha = formatearFecha(pub.fecha_publicacion),
+                                likes = pub.cantidad_likes,
+                                dislikes = 0,
+                                comentarios = pub.cantidad_comentarios,
+                                favoritos = pub.cantidad_favoritos,
+                                usuarioId = pub.usuario?.id_usuario.toString() ?: "",
+                                usuarioNombre = pub.usuario?.usuario ?: "Usuario",
+                                usuarioFoto = fotoPerfilUsuario,
+                                usuarioLike = false,
+                                usuarioDislike = false,
+                                usuarioFavorito = false
+                            )
+                        }.toMutableList()
+
+                        println("✅ Total publicaciones cargadas: ${todasPublicaciones.size}")
+
+                        // Cargar estado de reacciones
+                        cargarEstadoReacciones(todasPublicaciones)
+
+                        // Cargar favoritos del usuario
+                        cargarFavoritos()
+
+                        // Mostrar publicaciones del usuario
+                        seleccionarTab(TabActivo.PUBLICACIONES)
+
+                        mostrarCargando(false)
+                    } else {
+                        mostrarCargando(false)
+                        Toast.makeText(context, "No hay publicaciones", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    mostrarCargando(false)
+                    println("❌ Error en respuesta: ${response.code()} - ${response.message()}")
+                    Toast.makeText(context, "Error al cargar publicaciones", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                mostrarCargando(false)
+                println("❌ Excepción al cargar publicaciones: ${e.message}")
+                e.printStackTrace()
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun cargarEstadoReacciones(publicaciones: List<Publicacion>) {
+        lifecycleScope.launch {
+            publicaciones.forEach { pub ->
+                try {
+                    val response = RetrofitClient.reaccionesApi.obtenerEstadoReacciones(
+                        pub.id.toInt(),
+                        idUsuarioActual
+                    )
+
+                    if (response.isSuccessful && response.body() != null) {
+                        val estado = response.body()!!.data
+
+                        if (estado != null) {
+                            pub.usuarioLike = estado.reaccion_usuario == "like"
+                            pub.usuarioDislike = estado.reaccion_usuario == "dislike"
+                            pub.usuarioFavorito = estado.es_favorito
+                            pub.dislikes = estado.dislikes
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("❌ Error al obtener estado de publicación ${pub.id}: ${e.message}")
+                }
+            }
+
+            publicacionesAdapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun cargarFavoritos() {
+        lifecycleScope.launch {
+            try {
+                // Filtrar publicaciones favoritas basándose en el estado
+                publicacionesFavoritas = todasPublicaciones.filter {
+                    it.usuarioFavorito
+                }.toMutableList()
+
+            } catch (e: Exception) {
+                println("❌ Error al cargar favoritos: ${e.message}")
+            }
+        }
+    }
+
+    private fun mostrarCargando(mostrar: Boolean) {
+        progressBar.visibility = if (mostrar) View.VISIBLE else View.GONE
     }
 
     private fun mostrarPublicaciones(publicaciones: List<Publicacion>) {
         publicacionesAdapter.updatePublicaciones(publicaciones)
     }
 
-    private fun toggleFavorito(publicacion: Publicacion) {
-        if (publicacionesFavoritas.contains(publicacion.id)) {
-            publicacionesFavoritas.remove(publicacion.id)
-            Toast.makeText(context, "Eliminado de favoritos", Toast.LENGTH_SHORT).show()
-        } else {
-            publicacionesFavoritas.add(publicacion.id)
-            Toast.makeText(context, "Agregado a favoritos", Toast.LENGTH_SHORT).show()
+    // ==================== MANEJO DE REACCIONES ====================
+
+    private fun manejarLike(publicacion: Publicacion) {
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
         }
 
-        if (tabActual == TabActivo.FAVORITOS) {
-            seleccionarTab(TabActivo.FAVORITOS)
+        lifecycleScope.launch {
+            try {
+                val idPublicacion = publicacion.id.toInt()
+                val request = ReaccionRequest(
+                    id_usuario = idUsuarioActual,
+                    tipo_reaccion = "like"
+                )
+
+                val response = RetrofitClient.reaccionesApi.reaccionarPublicacion(
+                    idPublicacion,
+                    request
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val data = response.body()!!.data
+
+                    if (data != null) {
+                        publicacion.likes = data.likes
+                        publicacion.dislikes = data.dislikes
+                        publicacion.usuarioLike = data.reaccion_usuario == "like"
+                        publicacion.usuarioDislike = data.reaccion_usuario == "dislike"
+
+                        val position = publicacionesAdapter.publicaciones.indexOf(publicacion)
+                        if (position != -1) {
+                            publicacionesAdapter.notifyItemChanged(position)
+                        }
+
+                        val mensaje = when {
+                            publicacion.usuarioLike -> "👍 Like agregado"
+                            else -> "Like eliminado"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Error al procesar like", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun manejarDislike(publicacion: Publicacion) {
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val idPublicacion = publicacion.id.toInt()
+                val request = ReaccionRequest(
+                    id_usuario = idUsuarioActual,
+                    tipo_reaccion = "dislike"
+                )
+
+                val response = RetrofitClient.reaccionesApi.reaccionarPublicacion(
+                    idPublicacion,
+                    request
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val data = response.body()!!.data
+
+                    if (data != null) {
+                        publicacion.likes = data.likes
+                        publicacion.dislikes = data.dislikes
+                        publicacion.usuarioLike = data.reaccion_usuario == "like"
+                        publicacion.usuarioDislike = data.reaccion_usuario == "dislike"
+
+                        val position = publicacionesAdapter.publicaciones.indexOf(publicacion)
+                        if (position != -1) {
+                            publicacionesAdapter.notifyItemChanged(position)
+                        }
+
+                        val mensaje = when {
+                            publicacion.usuarioDislike -> "👎 Dislike agregado"
+                            else -> "Dislike eliminado"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Error al procesar dislike", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun manejarFavorito(publicacion: Publicacion) {
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val idPublicacion = publicacion.id.toInt()
+                val request = FavoritoRequest(id_usuario = idUsuarioActual)
+
+                val response = RetrofitClient.reaccionesApi.toggleFavorito(
+                    idPublicacion,
+                    request
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val data = response.body()!!.data
+
+                    if (data != null) {
+                        publicacion.favoritos = data.favoritos
+                        publicacion.usuarioFavorito = data.es_favorito
+
+                        // Actualizar lista de favoritos
+                        if (data.es_favorito) {
+                            if (!publicacionesFavoritas.contains(publicacion)) {
+                                publicacionesFavoritas.add(publicacion)
+                            }
+                        } else {
+                            publicacionesFavoritas.removeAll { it.id == publicacion.id }
+                        }
+
+                        val position = publicacionesAdapter.publicaciones.indexOf(publicacion)
+                        if (position != -1) {
+                            publicacionesAdapter.notifyItemChanged(position)
+                        }
+
+                        // Si estamos en la pestaña de favoritos, actualizar la vista
+                        if (tabActual == TabActivo.FAVORITOS) {
+                            seleccionarTab(TabActivo.FAVORITOS)
+                        }
+
+                        val mensaje = if (data.es_favorito) {
+                            "⭐ Agregado a favoritos"
+                        } else {
+                            "Eliminado de favoritos"
+                        }
+                        Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Error al procesar favorito", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
         }
     }
 
@@ -358,32 +530,71 @@ class PerfilFragment : Fragment() {
                 "Borrador \"${publicacion.titulo}\" eliminado",
                 Toast.LENGTH_SHORT
             ).show()
+            seleccionarTab(tabActual)
         } else {
-            // Eliminar de publicaciones
-            todasPublicaciones.removeAll { it.id == publicacion.id }
-            publicacionesFavoritas.remove(publicacion.id)
-            Toast.makeText(
-                context,
-                "\"${publicacion.titulo}\" eliminada correctamente",
-                Toast.LENGTH_SHORT
-            ).show()
+            // Eliminar publicación del servidor
+            if (!NetworkUtils.isInternetAvailable(requireContext())) {
+                Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            lifecycleScope.launch {
+                try {
+                    val response = RetrofitClient.publicacionesApi.eliminarPublicacion(
+                        publicacion.id.toInt()
+                    )
+
+                    if (response.isSuccessful && response.body() != null) {
+                        val responseBody = response.body()!!
+
+                        if (responseBody.success) {
+                            // Eliminar de las listas locales
+                            todasPublicaciones.removeAll { it.id == publicacion.id }
+                            publicacionesFavoritas.removeAll { it.id == publicacion.id }
+
+                            Toast.makeText(
+                                context,
+                                "\"${publicacion.titulo}\" eliminada correctamente",
+                                Toast.LENGTH_SHORT
+                            ).show()
+
+                            // Actualizar vista
+                            seleccionarTab(tabActual)
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Error: ${responseBody.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Error al eliminar la publicación",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(
+                        context,
+                        "Error: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    e.printStackTrace()
+                }
+            }
         }
+    }
 
-        // Actualizar vista
-        seleccionarTab(tabActual)
-
-        // TODO: Aquí harías la llamada al API para eliminar del servidor
-        // lifecycleScope.launch {
-        //     try {
-        //         val endpoint = if (esBorrador) "borradores" else "publicaciones"
-        //         val response = RetrofitClient.api.eliminar(endpoint, publicacion.id.toInt())
-        //         if (response.isSuccessful) {
-        //             // Ya se eliminó localmente
-        //         }
-        //     } catch (e: Exception) {
-        //         Toast.makeText(context, "Error al eliminar", Toast.LENGTH_SHORT).show()
-        //     }
-        // }
+    private fun formatearFecha(fechaISO: String): String {
+        return try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("dd 'de' MMMM 'del' yyyy 'a las' HH:mm", Locale("es", "MX"))
+            val date = inputFormat.parse(fechaISO)
+            "Creado el ${outputFormat.format(date)}"
+        } catch (e: Exception) {
+            "Fecha desconocida"
+        }
     }
 
     // Adapter para el header (sin cambios)
