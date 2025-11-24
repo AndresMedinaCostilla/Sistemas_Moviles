@@ -29,7 +29,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.proyecto.R
 import com.example.proyecto.adapters.ImagenesAdapter
 import com.example.proyecto.network.RetrofitClient
+import com.example.proyecto.repository.PublicacionRepository
 import com.example.proyecto.utils.SessionManager
+import com.example.proyecto.utils.NetworkUtils
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -43,6 +45,7 @@ import java.util.*
 class AgregarPublicacionFragment : Fragment() {
 
     private lateinit var sessionManager: SessionManager
+    private lateinit var publicacionRepository: PublicacionRepository
     private lateinit var btnCancelar: ImageButton
     private lateinit var btnGaleria: ImageButton
     private lateinit var btnPublicar: Button
@@ -116,6 +119,7 @@ class AgregarPublicacionFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         sessionManager = SessionManager(requireContext())
+        publicacionRepository = PublicacionRepository(requireContext())
 
         inicializarVistas(view)
         configurarRecyclerView()
@@ -124,6 +128,9 @@ class AgregarPublicacionFragment : Fragment() {
         configurarBackPressed()
 
         savedInstanceState?.let { restaurarEstado(it) }
+
+        // Verificar si hay publicaciones pendientes de sincronizar
+        verificarPublicacionesPendientes()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -298,6 +305,55 @@ class AgregarPublicacionFragment : Fragment() {
         tvContadorImagenes.text = "${imagenesSeleccionadas.size}/3 imágenes"
     }
 
+    // ==================== VERIFICAR PUBLICACIONES PENDIENTES ====================
+
+    private fun verificarPublicacionesPendientes() {
+        lifecycleScope.launch {
+            try {
+                val userId = sessionManager.getUserId()
+                val pendientes = publicacionRepository.contarPendientes(userId)
+
+                if (pendientes > 0 && NetworkUtils.isInternetAvailable(requireContext())) {
+                    mostrarDialogoSincronizar(pendientes)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun mostrarDialogoSincronizar(cantidad: Int) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Publicaciones pendientes")
+            .setMessage("Tienes $cantidad publicación(es) guardada(s) sin conexión. ¿Deseas subirlas ahora?")
+            .setPositiveButton("Subir ahora") { _, _ ->
+                sincronizarPublicaciones()
+            }
+            .setNegativeButton("Más tarde", null)
+            .show()
+    }
+
+    private fun sincronizarPublicaciones() {
+        lifecycleScope.launch {
+            try {
+                Toast.makeText(context, "Sincronizando publicaciones...", Toast.LENGTH_SHORT).show()
+
+                val userId = sessionManager.getUserId()
+                val resultado = publicacionRepository.sincronizarPublicacionesPendientes(userId)
+
+                Toast.makeText(context, resultado.mensaje, Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "Error al sincronizar: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    // ==================== GUARDAR BORRADOR ====================
+
     private fun guardarBorrador() {
         val titulo = etTitulo.text.toString().trim()
         val contenido = etContenido.text.toString().trim()
@@ -307,10 +363,38 @@ class AgregarPublicacionFragment : Fragment() {
             return
         }
 
-        // TODO: Guardar en base de datos local o SharedPreferences
-        Toast.makeText(context, "Borrador guardado", Toast.LENGTH_SHORT).show()
-        findNavController().navigateUp()
+        btnGuardarBorrador.isEnabled = false
+        btnGuardarBorrador.text = "Guardando..."
+
+        lifecycleScope.launch {
+            try {
+                val userId = sessionManager.getUserId()
+
+                publicacionRepository.guardarPublicacionLocal(
+                    idUsuario = userId,
+                    titulo = titulo.ifEmpty { "Sin título" },
+                    contenido = contenido.ifEmpty { "Sin contenido" },
+                    imagenesUris = imagenesSeleccionadas,
+                    esBorrador = true
+                )
+
+                Toast.makeText(context, "✅ Borrador guardado localmente", Toast.LENGTH_SHORT).show()
+                findNavController().navigateUp()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "Error al guardar borrador: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+                e.printStackTrace()
+            } finally {
+                btnGuardarBorrador.isEnabled = true
+                btnGuardarBorrador.text = "Guardar borrador"
+            }
+        }
     }
+
+    // ==================== PUBLICAR CONTENIDO ====================
 
     private fun publicarContenido() {
         val titulo = etTitulo.text.toString().trim()
@@ -327,7 +411,66 @@ class AgregarPublicacionFragment : Fragment() {
             }
         }
 
-        // Mostrar progreso
+        // Verificar conexión a internet
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            mostrarDialogoGuardarSinConexion(titulo, contenido)
+            return
+        }
+
+        // Publicar directamente si hay internet
+        publicarEnServidor(titulo, contenido)
+    }
+
+    private fun mostrarDialogoGuardarSinConexion(titulo: String, contenido: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Sin conexión a internet")
+            .setMessage("No hay conexión disponible. La publicación se guardará localmente y se subirá automáticamente cuando tengas internet.")
+            .setPositiveButton("Guardar") { _, _ ->
+                guardarPublicacionLocal(titulo, contenido, esBorrador = false)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun guardarPublicacionLocal(titulo: String, contenido: String, esBorrador: Boolean) {
+        btnPublicar.isEnabled = false
+        btnPublicar.text = "Guardando..."
+
+        lifecycleScope.launch {
+            try {
+                val userId = sessionManager.getUserId()
+
+                publicacionRepository.guardarPublicacionLocal(
+                    idUsuario = userId,
+                    titulo = titulo,
+                    contenido = contenido,
+                    imagenesUris = imagenesSeleccionadas,
+                    esBorrador = esBorrador
+                )
+
+                val mensaje = if (esBorrador) {
+                    "📝 Borrador guardado"
+                } else {
+                    "💾 Publicación guardada. Se subirá cuando tengas internet"
+                }
+
+                Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
+                findNavController().navigateUp()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "Error al guardar: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+                e.printStackTrace()
+            } finally {
+                btnPublicar.isEnabled = true
+                btnPublicar.text = "PUBLICAR"
+            }
+        }
+    }
+
+    private fun publicarEnServidor(titulo: String, contenido: String) {
         btnPublicar.isEnabled = false
         btnPublicar.text = "Publicando..."
 
@@ -335,17 +478,10 @@ class AgregarPublicacionFragment : Fragment() {
             try {
                 val userId = sessionManager.getUserId()
 
-                println("🔍 DEBUG - userId: $userId")
-                println("🔍 DEBUG - titulo: $titulo")
-                println("🔍 DEBUG - contenido: $contenido")
-                println("🔍 DEBUG - imágenes seleccionadas: ${imagenesSeleccionadas.size}")
-
-                // Preparar datos
                 val idUsuarioBody = userId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                 val tituloBody = titulo.toRequestBody("text/plain".toMediaTypeOrNull())
                 val descripcionBody = contenido.toRequestBody("text/plain".toMediaTypeOrNull())
 
-                // Preparar imágenes
                 val imagenesParts = mutableListOf<MultipartBody.Part>()
                 for (uri in imagenesSeleccionadas) {
                     val file = uriToFile(uri)
@@ -356,7 +492,6 @@ class AgregarPublicacionFragment : Fragment() {
                     }
                 }
 
-                // Enviar al servidor
                 val response = RetrofitClient.publicacionesApi.crearPublicacion(
                     idUsuario = idUsuarioBody,
                     titulo = tituloBody,
@@ -370,7 +505,7 @@ class AgregarPublicacionFragment : Fragment() {
                     if (responseBody.success) {
                         Toast.makeText(
                             context,
-                            "Publicación creada exitosamente",
+                            "✅ Publicación creada exitosamente",
                             Toast.LENGTH_SHORT
                         ).show()
                         findNavController().navigateUp()
