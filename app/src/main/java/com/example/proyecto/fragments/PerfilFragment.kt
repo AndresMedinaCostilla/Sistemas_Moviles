@@ -30,14 +30,20 @@ import com.example.proyecto.utils.NetworkUtils
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.example.proyecto.repository.PublicacionRepository
+import com.example.proyecto.database.PublicacionLocal
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 class PerfilFragment : Fragment() {
 
     private lateinit var sessionManager: SessionManager
 
+    private lateinit var publicacionRepository: PublicacionRepository
     // RecyclerView principal
     private lateinit var recyclerView: RecyclerView
     private lateinit var headerAdapter: HeaderAdapter
+
     private lateinit var publicacionesAdapter: PublicacionesPerfilAdapter
     private lateinit var progressBar: ProgressBar
 
@@ -66,6 +72,7 @@ class PerfilFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         sessionManager = SessionManager(requireContext())
+        publicacionRepository = PublicacionRepository(requireContext())
 
         // Obtener ID del usuario actual
         val userData = sessionManager.getUserData()
@@ -213,8 +220,80 @@ class PerfilFragment : Fragment() {
             }
             TabActivo.BORRADORES -> {
                 headerAdapter.actualizarTitulo("Mis Borradores")
-                mostrarPublicaciones(publicacionesBorradores)
+                // Cargar borradores desde la base de datos local
+                cargarBorradoresLocales()
             }
+        }
+    }
+
+    private fun cargarBorradoresLocales() {
+        lifecycleScope.launch {
+            try {
+                val borradoresLocales = publicacionRepository.obtenerBorradores(idUsuarioActual)
+
+                // Convertir PublicacionLocal a Publicacion
+                publicacionesBorradores = borradoresLocales.map { local ->
+                    convertirPublicacionLocalAPublicacion(local)
+                }.toMutableList()
+
+                mostrarPublicaciones(publicacionesBorradores)
+
+                if (publicacionesBorradores.isEmpty()) {
+                    Toast.makeText(context, "No tienes borradores guardados", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Error al cargar borradores", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun convertirPublicacionLocalAPublicacion(local: PublicacionLocal): Publicacion {
+        // Obtener las URIs de las imágenes desde el JSON
+        val gson = Gson()
+        val tipoLista = object : TypeToken<List<String>>() {}.type
+        val rutasImagenes: List<String> = gson.fromJson(local.imagenesUris, tipoLista)
+
+        // Convertir rutas de archivo a URIs que pueda usar Glide
+        val urisImagenes = rutasImagenes.map { ruta ->
+            "file://$ruta" // Convertir a URI que Glide pueda cargar
+        }
+
+        // Obtener datos del usuario actual para la foto de perfil
+        val userData = sessionManager.getUserData()
+        var fotoPerfilUrl: String? = null
+
+        if (!userData?.fotoPerfil.isNullOrEmpty()) {
+            val baseUrl = RetrofitClient.BASE_URL.removeSuffix("/")
+            fotoPerfilUrl = "$baseUrl${userData?.fotoPerfil}"
+        }
+
+        return Publicacion(
+            id = "draft_${local.id}", // Prefijo para identificar borradores
+            titulo = local.titulo,
+            descripcion = local.contenido,
+            imagenesUrl = urisImagenes,
+            fecha = formatearFechaLocal(local.fechaCreacion),
+            likes = 0,
+            dislikes = 0,
+            comentarios = 0,
+            favoritos = 0,
+            usuarioId = idUsuarioActual.toString(),
+            usuarioNombre = userData?.usuario ?: "Usuario",
+            usuarioFoto = fotoPerfilUrl, // Ahora carga la foto de perfil real
+            usuarioLike = false,
+            usuarioDislike = false,
+            usuarioFavorito = false
+        )
+    }
+
+    // Función para formatear fecha local
+    private fun formatearFechaLocal(timestamp: Long): String {
+        return try {
+            val outputFormat = SimpleDateFormat("dd 'de' MMMM 'del' yyyy 'a las' HH:mm", Locale("es", "MX"))
+            "Creado el ${outputFormat.format(timestamp)}"
+        } catch (e: Exception) {
+            "Fecha desconocida"
         }
     }
 
@@ -389,9 +468,16 @@ class PerfilFragment : Fragment() {
     }
 
     private fun mostrarCargando(mostrar: Boolean) {
-        progressBar.visibility = if (mostrar) View.VISIBLE else View.GONE
+        if (mostrar) {
+            // Mostrar spinner y ocultar RecyclerView temporalmente
+            progressBar.visibility = View.VISIBLE
+            recyclerView.visibility = View.INVISIBLE
+        } else {
+            // Ocultar spinner y mostrar RecyclerView
+            progressBar.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
+        }
     }
-
     private fun mostrarPublicaciones(publicaciones: List<Publicacion>) {
         publicacionesAdapter.updatePublicaciones(publicaciones)
     }
@@ -573,14 +659,34 @@ class PerfilFragment : Fragment() {
         val esBorrador = publicacion.id.startsWith("draft_")
 
         if (esBorrador) {
-            publicacionesBorradores.removeAll { it.id == publicacion.id }
-            Toast.makeText(
-                context,
-                "Borrador \"${publicacion.titulo}\" eliminado",
-                Toast.LENGTH_SHORT
-            ).show()
-            seleccionarTab(tabActual)
+            // Extraer el ID del borrador
+            val idBorrador = publicacion.id.removePrefix("draft_").toIntOrNull()
+
+            if (idBorrador != null) {
+                lifecycleScope.launch {
+                    try {
+                        publicacionRepository.eliminarBorrador(idBorrador)
+                        publicacionesBorradores.removeAll { it.id == publicacion.id }
+
+                        Toast.makeText(
+                            context,
+                            "Borrador \"${publicacion.titulo}\" eliminado",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        seleccionarTab(tabActual)
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            "Error al eliminar borrador",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        e.printStackTrace()
+                    }
+                }
+            }
         } else {
+            // Código existente para eliminar publicaciones del servidor
             if (!NetworkUtils.isInternetAvailable(requireContext())) {
                 Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
                 return
@@ -631,6 +737,7 @@ class PerfilFragment : Fragment() {
             }
         }
     }
+
 
     private fun formatearFecha(fechaISO: String): String {
         return try {

@@ -18,13 +18,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- ProgressBar para indicar carga -->
+    <!-- ProgressBar personalizado con el spinner -->
     <ProgressBar
         android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
         android:visibility="gone"
-        android:indeterminateTint="#8EE5E6"
+        android:indeterminateDrawable="@drawable/loading_spinner"
+        android:background="@drawable/spinner_background"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"

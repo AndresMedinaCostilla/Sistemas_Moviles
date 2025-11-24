@@ -1,518 +1,217 @@
-package com.example.proyecto.fragments
+package com.example.proyecto.repository
 
-import android.Manifest
-import android.app.AlertDialog
-import android.content.pm.PackageManager
+import android.content.Context
 import android.net.Uri
-import android.os.Bundle
-import android.os.Environment
-import android.text.Editable
-import android.text.TextWatcher
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.TextView
-import android.widget.Toast
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.cardview.widget.CardView
-import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
-import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.example.proyecto.R
-import com.example.proyecto.adapters.ImagenesAdapter
+import com.example.proyecto.database.AppDatabase
+import com.example.proyecto.database.PublicacionLocal
 import com.example.proyecto.network.RetrofitClient
-import com.example.proyecto.repository.PublicacionRepository
-import com.example.proyecto.utils.SessionManager
 import com.example.proyecto.utils.NetworkUtils
-import kotlinx.coroutines.launch
+import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.FileOutputStream
-import java.text.SimpleDateFormat
-import java.util.*
+import java.net.HttpURLConnection
+import java.net.URL
 
-class AgregarPublicacionFragment : Fragment() {
+class PublicacionRepository(private val context: Context) {
 
-    private lateinit var sessionManager: SessionManager
-    private lateinit var publicacionRepository: PublicacionRepository
-    private lateinit var btnCancelar: ImageButton
-    private lateinit var btnGaleria: ImageButton
-    private lateinit var btnPublicar: Button
-    private lateinit var btnGuardarBorrador: Button
-    private lateinit var etTitulo: EditText
-    private lateinit var etContenido: EditText
-    private lateinit var tvContadorCaracteres: TextView
-    private lateinit var tvContadorImagenes: TextView
-    private lateinit var layoutImagenes: CardView
-    private lateinit var recyclerImagenes: RecyclerView
+    private val dao = AppDatabase.getDatabase(context).publicacionLocalDao()
 
-    private lateinit var imagenesAdapter: ImagenesAdapter
-    private val imagenesSeleccionadas = mutableListOf<Uri>()
-    private var fotoUri: Uri? = null
-
-    companion object {
-        private const val KEY_IMAGENES = "imagenes_seleccionadas"
-        private const val KEY_TITULO = "titulo"
-        private const val KEY_CONTENIDO = "contenido"
-        private const val KEY_FOTO_URI = "foto_uri"
-    }
-
-    private val galeriaLauncher = registerForActivityResult(
-        ActivityResultContracts.GetMultipleContents()
-    ) { uris: List<Uri> ->
-        if (uris.isNotEmpty()) {
-            for (uri in uris) {
-                if (imagenesSeleccionadas.size < 3) {
-                    imagenesSeleccionadas.add(uri)
-                    imagenesAdapter.agregarImagen(uri)
-                }
-            }
-            actualizarVistaImagenes()
+    /**
+     * Verifica si el servidor está disponible y respondiendo
+     */
+    suspend fun verificarDisponibilidadServidor(): Boolean {
+        if (!NetworkUtils.isInternetAvailable(context)) {
+            return false
         }
-    }
 
-    private val camaraLauncher = registerForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success && fotoUri != null) {
-            if (imagenesSeleccionadas.size < 3) {
-                imagenesSeleccionadas.add(fotoUri!!)
-                imagenesAdapter.agregarImagen(fotoUri!!)
-                actualizarVistaImagenes()
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = URL(RetrofitClient.BASE_URL + "api/publicaciones")
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 3000 // 3 segundos
+                connection.readTimeout = 3000
+
+                val responseCode = connection.responseCode
+                connection.disconnect()
+
+                println("🌐 Verificación servidor: código $responseCode")
+                responseCode in 200..299 || responseCode == 404 // 404 también significa que el servidor responde
+            } catch (e: Exception) {
+                println("❌ Servidor no disponible: ${e.message}")
+                false
             }
         }
     }
 
-    private val permisosCamaraLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) abrirCamara()
-        else Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
-    }
+    /**
+     * Guarda una publicación localmente
+     */
+    suspend fun guardarPublicacionLocal(
+        idUsuario: Int,
+        titulo: String,
+        contenido: String,
+        imagenesUris: List<Uri>,
+        esBorrador: Boolean
+    ): Long {
+        return withContext(Dispatchers.IO) {
+            // Copiar imágenes a almacenamiento persistente
+            val urisPersistentes = copiarImagenesAPersistente(imagenesUris)
 
-    private val permisosGaleriaLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) abrirGaleria()
-        else Toast.makeText(context, "Permiso de galería denegado", Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.activity_agregar_publicacion, container, false)
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        sessionManager = SessionManager(requireContext())
-        publicacionRepository = PublicacionRepository(requireContext())
-
-        inicializarVistas(view)
-        configurarRecyclerView()
-        configurarListeners()
-        configurarContadorCaracteres()
-        configurarBackPressed()
-
-        savedInstanceState?.let { restaurarEstado(it) }
-
-        // Verificar si hay publicaciones pendientes de sincronizar
-        verificarPublicacionesPendientes()
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        val uriStrings = ArrayList(imagenesSeleccionadas.map { it.toString() })
-        outState.putStringArrayList(KEY_IMAGENES, uriStrings)
-        outState.putString(KEY_TITULO, etTitulo.text.toString())
-        outState.putString(KEY_CONTENIDO, etContenido.text.toString())
-        fotoUri?.let { outState.putString(KEY_FOTO_URI, it.toString()) }
-    }
-
-    private fun restaurarEstado(savedInstanceState: Bundle) {
-        savedInstanceState.getStringArrayList(KEY_IMAGENES)?.let { uriStrings ->
-            imagenesSeleccionadas.clear()
-            for (uriString in uriStrings) {
-                val uri = Uri.parse(uriString)
-                imagenesSeleccionadas.add(uri)
-                imagenesAdapter.agregarImagen(uri)
-            }
-            actualizarVistaImagenes()
-        }
-        savedInstanceState.getString(KEY_TITULO)?.let { etTitulo.setText(it) }
-        savedInstanceState.getString(KEY_CONTENIDO)?.let { etContenido.setText(it) }
-        savedInstanceState.getString(KEY_FOTO_URI)?.let { fotoUri = Uri.parse(it) }
-    }
-
-    private fun inicializarVistas(view: View) {
-        btnCancelar = view.findViewById(R.id.btnCancelar)
-        btnGaleria = view.findViewById(R.id.btnGaleria)
-        btnPublicar = view.findViewById(R.id.btnPublicar)
-        btnGuardarBorrador = view.findViewById(R.id.btnGuardarBorrador)
-        etTitulo = view.findViewById(R.id.etTitulo)
-        etContenido = view.findViewById(R.id.etContenido)
-        tvContadorCaracteres = view.findViewById(R.id.tvContadorCaracteres)
-        tvContadorImagenes = view.findViewById(R.id.tvContadorImagenes)
-        layoutImagenes = view.findViewById(R.id.layoutImagenes)
-        recyclerImagenes = view.findViewById(R.id.recyclerImagenes)
-    }
-
-    private fun configurarRecyclerView() {
-        imagenesAdapter = ImagenesAdapter(mutableListOf()) { position ->
-            if (position in imagenesSeleccionadas.indices) {
-                imagenesSeleccionadas.removeAt(position)
-            }
-            imagenesAdapter.eliminarImagen(position)
-            actualizarVistaImagenes()
-        }
-        recyclerImagenes.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-        recyclerImagenes.adapter = imagenesAdapter
-    }
-
-    private fun configurarListeners() {
-        btnCancelar.setOnClickListener { mostrarDialogoSalir() }
-
-        btnGaleria.setOnClickListener {
-            if (imagenesSeleccionadas.size < 3) mostrarDialogoOpciones()
-            else Toast.makeText(context, "Máximo 3 imágenes permitidas", Toast.LENGTH_SHORT).show()
-        }
-
-        btnPublicar.setOnClickListener { publicarContenido() }
-        btnGuardarBorrador.setOnClickListener { guardarBorrador() }
-    }
-
-    private fun configurarBackPressed() {
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner,
-            object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() {
-                    mostrarDialogoSalir()
-                }
-            }
-        )
-    }
-
-    private fun tieneContenido(): Boolean {
-        return etTitulo.text.toString().trim().isNotEmpty() ||
-                etContenido.text.toString().trim().isNotEmpty() ||
-                imagenesSeleccionadas.isNotEmpty()
-    }
-
-    private fun mostrarDialogoSalir() {
-        if (tieneContenido()) {
-            AlertDialog.Builder(requireContext())
-                .setTitle("¿Guardar borrador?")
-                .setMessage("Tienes cambios sin guardar. ¿Deseas guardar esta publicación como borrador?")
-                .setPositiveButton("Guardar borrador") { _, _ ->
-                    guardarBorrador()
-                    findNavController().navigateUp()
-                }
-                .setNegativeButton("Descartar") { _, _ ->
-                    findNavController().navigateUp()
-                }
-                .setNeutralButton("Cancelar", null)
-                .show()
-        } else {
-            findNavController().navigateUp()
-        }
-    }
-
-    private fun configurarContadorCaracteres() {
-        etContenido.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                tvContadorCaracteres.text = "${s?.length ?: 0}/500"
-            }
-            override fun afterTextChanged(s: Editable?) {}
-        })
-    }
-
-    private fun mostrarDialogoOpciones() {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Agregar imagen")
-            .setItems(arrayOf("Tomar foto", "Elegir de galería")) { _, which ->
-                when (which) {
-                    0 -> verificarYAbrirCamara()
-                    1 -> verificarYAbrirGaleria()
-                }
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
-    private fun verificarYAbrirCamara() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED) {
-            abrirCamara()
-        } else {
-            permisosCamaraLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-
-    private fun verificarYAbrirGaleria() {
-        val permiso = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU)
-            Manifest.permission.READ_MEDIA_IMAGES
-        else Manifest.permission.READ_EXTERNAL_STORAGE
-
-        if (ContextCompat.checkSelfPermission(requireContext(), permiso) == PackageManager.PERMISSION_GRANTED) {
-            abrirGaleria()
-        } else {
-            permisosGaleriaLauncher.launch(permiso)
-        }
-    }
-
-    private fun abrirCamara() {
-        try {
-            val fotoFile = crearArchivoImagen()
-            fotoUri = FileProvider.getUriForFile(
-                requireContext(),
-                "${requireContext().packageName}.fileprovider",
-                fotoFile
+            val publicacion = PublicacionLocal(
+                idUsuario = idUsuario,
+                titulo = titulo,
+                contenido = contenido,
+                imagenesUris = Gson().toJson(urisPersistentes),
+                esBorrador = esBorrador,
+                estadoSincronizacion = if (esBorrador) "borrador" else "pendiente"
             )
-            camaraLauncher.launch(fotoUri)
-        } catch (e: Exception) {
-            Toast.makeText(context, "Error al abrir cámara: ${e.message}", Toast.LENGTH_SHORT).show()
+
+            dao.insertar(publicacion)
         }
     }
 
-    private fun abrirGaleria() {
-        if (3 - imagenesSeleccionadas.size > 0) {
-            galeriaLauncher.launch("image/*")
+    /**
+     * Copia imágenes de URIs temporales a almacenamiento interno
+     */
+    private fun copiarImagenesAPersistente(uris: List<Uri>): List<String> {
+        val rutasPersistentes = mutableListOf<String>()
+        val directorioImagenes = File(context.filesDir, "publicaciones_locales")
+
+        if (!directorioImagenes.exists()) {
+            directorioImagenes.mkdirs()
         }
-    }
 
-    private fun crearArchivoImagen(): File {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)
-        return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
-    }
-
-    private fun actualizarVistaImagenes() {
-        layoutImagenes.visibility = if (imagenesSeleccionadas.isEmpty()) View.GONE else View.VISIBLE
-        tvContadorImagenes.text = "${imagenesSeleccionadas.size}/3 imágenes"
-    }
-
-    // ==================== VERIFICAR PUBLICACIONES PENDIENTES ====================
-
-    private fun verificarPublicacionesPendientes() {
-        lifecycleScope.launch {
+        uris.forEach { uri ->
             try {
-                val userId = sessionManager.getUserId()
-                val pendientes = publicacionRepository.contarPendientes(userId)
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val nombreArchivo = "img_${System.currentTimeMillis()}_${rutasPersistentes.size}.jpg"
+                val archivo = File(directorioImagenes, nombreArchivo)
 
-                if (pendientes > 0 && NetworkUtils.isInternetAvailable(requireContext())) {
-                    mostrarDialogoSincronizar(pendientes)
-                }
+                val outputStream = FileOutputStream(archivo)
+                inputStream?.copyTo(outputStream)
+                inputStream?.close()
+                outputStream.close()
+
+                rutasPersistentes.add(archivo.absolutePath)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
+
+        return rutasPersistentes
     }
 
-    private fun mostrarDialogoSincronizar(cantidad: Int) {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Publicaciones pendientes")
-            .setMessage("Tienes $cantidad publicación(es) guardada(s) sin conexión. ¿Deseas subirlas ahora?")
-            .setPositiveButton("Subir ahora") { _, _ ->
-                sincronizarPublicaciones()
-            }
-            .setNegativeButton("Más tarde", null)
-            .show()
+    /**
+     * Obtiene todos los borradores del usuario
+     */
+    suspend fun obtenerBorradores(userId: Int): List<PublicacionLocal> {
+        return withContext(Dispatchers.IO) {
+            dao.obtenerBorradores(userId)
+        }
     }
 
-    private fun sincronizarPublicaciones() {
-        lifecycleScope.launch {
+    /**
+     * Obtiene publicaciones pendientes de sincronización
+     */
+    suspend fun obtenerPendientesSincronizacion(userId: Int): List<PublicacionLocal> {
+        return withContext(Dispatchers.IO) {
+            dao.obtenerPendientesSincronizacion(userId)
+        }
+    }
+
+    /**
+     * Cuenta publicaciones pendientes
+     */
+    suspend fun contarPendientes(userId: Int): Int {
+        return withContext(Dispatchers.IO) {
+            dao.contarPendientes(userId)
+        }
+    }
+
+    /**
+     * Intenta sincronizar publicaciones pendientes con el servidor
+     */
+    suspend fun sincronizarPublicacionesPendientes(userId: Int): SincronizacionResult {
+        if (!NetworkUtils.isInternetAvailable(context)) {
+            return SincronizacionResult(0, 0, "Sin conexión a internet")
+        }
+
+        val pendientes = obtenerPendientesSincronizacion(userId)
+        var exitosas = 0
+        var fallidas = 0
+
+        pendientes.forEach { publicacion ->
             try {
-                Toast.makeText(context, "Sincronizando publicaciones...", Toast.LENGTH_SHORT).show()
+                val resultado = subirPublicacionAlServidor(publicacion)
 
-                val userId = sessionManager.getUserId()
-                val resultado = publicacionRepository.sincronizarPublicacionesPendientes(userId)
-
-                Toast.makeText(context, resultado.mensaje, Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    "Error al sincronizar: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        }
-    }
-
-    // ==================== GUARDAR BORRADOR ====================
-
-    private fun guardarBorrador() {
-        val titulo = etTitulo.text.toString().trim()
-        val contenido = etContenido.text.toString().trim()
-
-        if (titulo.isEmpty() && contenido.isEmpty() && imagenesSeleccionadas.isEmpty()) {
-            Toast.makeText(context, "No hay contenido para guardar", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        btnGuardarBorrador.isEnabled = false
-        btnGuardarBorrador.text = "Guardando..."
-
-        lifecycleScope.launch {
-            try {
-                val userId = sessionManager.getUserId()
-
-                publicacionRepository.guardarPublicacionLocal(
-                    idUsuario = userId,
-                    titulo = titulo.ifEmpty { "Sin título" },
-                    contenido = contenido.ifEmpty { "Sin contenido" },
-                    imagenesUris = imagenesSeleccionadas,
-                    esBorrador = true
-                )
-
-                Toast.makeText(context, "✅ Borrador guardado localmente", Toast.LENGTH_SHORT).show()
-                findNavController().navigateUp()
-            } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    "Error al guardar borrador: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
-                e.printStackTrace()
-            } finally {
-                btnGuardarBorrador.isEnabled = true
-                btnGuardarBorrador.text = "Guardar borrador"
-            }
-        }
-    }
-
-    // ==================== PUBLICAR CONTENIDO ====================
-
-    private fun publicarContenido() {
-        val titulo = etTitulo.text.toString().trim()
-        val contenido = etContenido.text.toString().trim()
-
-        when {
-            titulo.isEmpty() -> {
-                Toast.makeText(context, "Agrega un título", Toast.LENGTH_SHORT).show()
-                return
-            }
-            contenido.isEmpty() -> {
-                Toast.makeText(context, "Agrega contenido", Toast.LENGTH_SHORT).show()
-                return
-            }
-        }
-
-        // Deshabilitar botón mientras verifica
-        btnPublicar.isEnabled = false
-        btnPublicar.text = "Verificando..."
-
-        lifecycleScope.launch {
-            try {
-                // Verificar si el servidor está disponible
-                val servidorDisponible = publicacionRepository.verificarDisponibilidadServidor()
-
-                if (!servidorDisponible) {
-                    // Mostrar diálogo para guardar localmente
-                    btnPublicar.isEnabled = true
-                    btnPublicar.text = "PUBLICAR"
-                    mostrarDialogoGuardarSinConexion(titulo, contenido)
-                    return@launch
-                }
-
-                // Si el servidor está disponible, publicar directamente
-                publicarEnServidor(titulo, contenido)
-            } catch (e: Exception) {
-                btnPublicar.isEnabled = true
-                btnPublicar.text = "PUBLICAR"
-                Toast.makeText(
-                    context,
-                    "Error al verificar conexión: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-    }
-
-    private fun mostrarDialogoGuardarSinConexion(titulo: String, contenido: String) {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Sin conexión a internet")
-            .setMessage("No hay conexión disponible. La publicación se guardará localmente y se subirá automáticamente cuando tengas internet.")
-            .setPositiveButton("Guardar") { _, _ ->
-                guardarPublicacionLocal(titulo, contenido, esBorrador = false)
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
-    private fun guardarPublicacionLocal(titulo: String, contenido: String, esBorrador: Boolean) {
-        btnPublicar.isEnabled = false
-        btnPublicar.text = "Guardando..."
-
-        lifecycleScope.launch {
-            try {
-                val userId = sessionManager.getUserId()
-
-                publicacionRepository.guardarPublicacionLocal(
-                    idUsuario = userId,
-                    titulo = titulo,
-                    contenido = contenido,
-                    imagenesUris = imagenesSeleccionadas,
-                    esBorrador = esBorrador
-                )
-
-                val mensaje = if (esBorrador) {
-                    "📝 Borrador guardado"
+                if (resultado) {
+                    // Marcar como sincronizada y eliminar
+                    dao.eliminarPorId(publicacion.id)
+                    exitosas++
                 } else {
-                    "💾 Publicación guardada. Se subirá cuando tengas internet"
+                    // Marcar como error
+                    val actualizada = publicacion.copy(estadoSincronizacion = "error")
+                    dao.actualizar(actualizada)
+                    fallidas++
                 }
-
-                Toast.makeText(context, mensaje, Toast.LENGTH_LONG).show()
-                findNavController().navigateUp()
             } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    "Error al guardar: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
                 e.printStackTrace()
-            } finally {
-                btnPublicar.isEnabled = true
-                btnPublicar.text = "PUBLICAR"
+                fallidas++
             }
         }
+
+        val mensaje = when {
+            exitosas > 0 && fallidas == 0 -> "$exitosas publicaciones sincronizadas"
+            exitosas > 0 && fallidas > 0 -> "$exitosas sincronizadas, $fallidas fallaron"
+            fallidas > 0 -> "Error al sincronizar $fallidas publicaciones"
+            else -> "No hay publicaciones pendientes"
+        }
+
+        return SincronizacionResult(exitosas, fallidas, mensaje)
     }
 
-    private fun publicarEnServidor(titulo: String, contenido: String) {
-        btnPublicar.isEnabled = false
-        btnPublicar.text = "Publicando..."
-
-        lifecycleScope.launch {
+    /**
+     * Sube una publicación local al servidor
+     */
+    private suspend fun subirPublicacionAlServidor(publicacion: PublicacionLocal): Boolean {
+        return withContext(Dispatchers.IO) {
             try {
-                val userId = sessionManager.getUserId()
+                // Preparar datos
+                val idUsuarioBody = publicacion.idUsuario.toString()
+                    .toRequestBody("text/plain".toMediaTypeOrNull())
+                val tituloBody = publicacion.titulo
+                    .toRequestBody("text/plain".toMediaTypeOrNull())
+                val descripcionBody = publicacion.contenido
+                    .toRequestBody("text/plain".toMediaTypeOrNull())
 
-                val idUsuarioBody = userId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
-                val tituloBody = titulo.toRequestBody("text/plain".toMediaTypeOrNull())
-                val descripcionBody = contenido.toRequestBody("text/plain".toMediaTypeOrNull())
-
+                // Preparar imágenes desde rutas persistentes
                 val imagenesParts = mutableListOf<MultipartBody.Part>()
-                for (uri in imagenesSeleccionadas) {
-                    val file = uriToFile(uri)
-                    if (file != null) {
+                val rutasImagenes: List<String> = Gson().fromJson(
+                    publicacion.imagenesUris,
+                    object : com.google.gson.reflect.TypeToken<List<String>>() {}.type
+                )
+
+                rutasImagenes.forEach { ruta ->
+                    val file = File(ruta)
+                    if (file.exists()) {
                         val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
-                        val part = MultipartBody.Part.createFormData("imagenes", file.name, requestFile)
+                        val part = MultipartBody.Part.createFormData(
+                            "imagenes",
+                            file.name,
+                            requestFile
+                        )
                         imagenesParts.add(part)
                     }
                 }
 
+                // Enviar al servidor
                 val response = RetrofitClient.publicacionesApi.crearPublicacion(
                     idUsuario = idUsuarioBody,
                     titulo = tituloBody,
@@ -520,58 +219,50 @@ class AgregarPublicacionFragment : Fragment() {
                     imagenes = imagenesParts
                 )
 
-                if (response.isSuccessful && response.body() != null) {
-                    val responseBody = response.body()!!
-
-                    if (responseBody.success) {
-                        Toast.makeText(
-                            context,
-                            "✅ Publicación creada exitosamente",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        findNavController().navigateUp()
-                    } else {
-                        Toast.makeText(
-                            context,
-                            responseBody.message,
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                } else {
-                    Toast.makeText(
-                        context,
-                        "Error al crear publicación: ${response.message()}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
+                response.isSuccessful && response.body()?.success == true
             } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    "Error: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
                 e.printStackTrace()
-            } finally {
-                btnPublicar.isEnabled = true
-                btnPublicar.text = "PUBLICAR"
+                false
             }
         }
     }
 
-    private fun uriToFile(uri: Uri): File? {
-        return try {
-            val inputStream = requireContext().contentResolver.openInputStream(uri)
-            val tempFile = File.createTempFile("upload", ".jpg", requireContext().cacheDir)
-            val outputStream = FileOutputStream(tempFile)
+    /**
+     * Elimina un borrador
+     */
+    suspend fun eliminarBorrador(id: Int) {
+        withContext(Dispatchers.IO) {
+            dao.eliminarPorId(id)
+        }
+    }
 
-            inputStream?.copyTo(outputStream)
-            inputStream?.close()
-            outputStream.close()
-
-            tempFile
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
+    /**
+     * Publica un borrador (lo convierte en pendiente de sincronización)
+     */
+    suspend fun publicarBorrador(id: Int): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val publicacion = dao.obtenerPorId(id)
+                if (publicacion != null && publicacion.esBorrador) {
+                    val actualizada = publicacion.copy(
+                        esBorrador = false,
+                        estadoSincronizacion = "pendiente"
+                    )
+                    dao.actualizar(actualizada)
+                    true
+                } else {
+                    false
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                false
+            }
         }
     }
 }
+
+data class SincronizacionResult(
+    val exitosas: Int,
+    val fallidas: Int,
+    val mensaje: String
+)
