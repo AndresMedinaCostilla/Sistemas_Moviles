@@ -28,8 +28,14 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.proyecto.R
 import com.example.proyecto.adapters.ImagenesAdapter
+import com.example.proyecto.database.AppDatabase
+import com.example.proyecto.database.PublicacionLocal
 import com.example.proyecto.network.RetrofitClient
+import com.example.proyecto.repository.PublicacionRepository
+import com.example.proyecto.utils.NetworkUtils
 import com.example.proyecto.utils.SessionManager
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -43,6 +49,9 @@ import java.util.*
 class EditarBorradorFragment : Fragment() {
 
     private lateinit var sessionManager: SessionManager
+    private lateinit var publicacionRepository: PublicacionRepository
+    private lateinit var dao: com.example.proyecto.database.PublicacionLocalDao
+
     private lateinit var btnCancelar: ImageButton
     private lateinit var btnGaleria: ImageButton
     private lateinit var btnPublicar: Button
@@ -58,11 +67,11 @@ class EditarBorradorFragment : Fragment() {
     private val imagenesSeleccionadas = mutableListOf<Uri>()
     private var fotoUri: Uri? = null
 
-    // Variables para detectar cambios
-    private var borradorId: String = ""
+    // Variables para el borrador
+    private var borradorId: Int = 0
     private var tituloOriginal = ""
     private var contenidoOriginal = ""
-    private var imagenesOriginales = mutableListOf<Uri>()
+    private var imagenesOriginales = mutableListOf<String>()
 
     companion object {
         private const val KEY_IMAGENES = "imagenes_seleccionadas"
@@ -122,6 +131,8 @@ class EditarBorradorFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         sessionManager = SessionManager(requireContext())
+        publicacionRepository = PublicacionRepository(requireContext())
+        dao = AppDatabase.getDatabase(requireContext()).publicacionLocalDao()
 
         inicializarVistas(view)
         cargarDatosBorrador()
@@ -148,22 +159,56 @@ class EditarBorradorFragment : Fragment() {
 
     private fun cargarDatosBorrador() {
         arguments?.let { args ->
-            borradorId = args.getString("borrador_id", "")
+            val borradorIdStr = args.getString("borrador_id", "")
+            borradorId = borradorIdStr.removePrefix("draft_").toIntOrNull() ?: 0
 
-            // Cargar texto
-            val titulo = args.getString("borrador_titulo", "")
-            val contenido = args.getString("borrador_contenido", "")
+            if (borradorId == 0) {
+                Toast.makeText(context, "Error: ID de borrador inválido", Toast.LENGTH_LONG).show()
+                findNavController().navigateUp()
+                return
+            }
 
-            etTitulo.setText(titulo)
-            etContenido.setText(contenido)
+            // Cargar borrador desde la base de datos
+            lifecycleScope.launch {
+                try {
+                    val borrador = dao.obtenerPorId(borradorId)
 
-            // Guardar valores originales
-            tituloOriginal = titulo
-            contenidoOriginal = contenido
+                    if (borrador != null) {
+                        // Cargar texto
+                        etTitulo.setText(borrador.titulo)
+                        etContenido.setText(borrador.contenido)
 
-            // TODO: Cargar imágenes cuando implementes la persistencia
+                        // Guardar valores originales
+                        tituloOriginal = borrador.titulo
+                        contenidoOriginal = borrador.contenido
 
-            actualizarVistaImagenes()
+                        // Cargar imágenes existentes
+                        val gson = Gson()
+                        val tipoLista = object : TypeToken<List<String>>() {}.type
+                        imagenesOriginales = gson.fromJson(borrador.imagenesUris, tipoLista)
+
+                        println("📷 DEBUG - Imágenes cargadas: ${imagenesOriginales.size}")
+                        imagenesOriginales.forEach { println("  - $it") }
+
+                        // Convertir rutas a URIs y mostrar
+                        imagenesSeleccionadas.clear()
+                        for (rutaImagen in imagenesOriginales) {
+                            val uri = Uri.parse("file://$rutaImagen")
+                            imagenesSeleccionadas.add(uri)
+                            imagenesAdapter.agregarImagen(uri)
+                        }
+
+                        actualizarVistaImagenes()
+                    } else {
+                        Toast.makeText(context, "Borrador no encontrado", Toast.LENGTH_LONG).show()
+                        findNavController().navigateUp()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Error al cargar borrador: ${e.message}", Toast.LENGTH_LONG).show()
+                    e.printStackTrace()
+                    findNavController().navigateUp()
+                }
+            }
         }
     }
 
@@ -218,8 +263,7 @@ class EditarBorradorFragment : Fragment() {
 
         return tituloActual != tituloOriginal ||
                 contenidoActual != contenidoOriginal ||
-                imagenesSeleccionadas.size != imagenesOriginales.size ||
-                !imagenesSeleccionadas.containsAll(imagenesOriginales)
+                imagenesSeleccionadas.size != imagenesOriginales.size
     }
 
     private fun mostrarDialogoSalir() {
@@ -302,13 +346,20 @@ class EditarBorradorFragment : Fragment() {
         tvContadorImagenes.text = "${imagenesSeleccionadas.size}/3 imágenes"
     }
 
+    // ==================== GUARDAR BORRADOR ====================
     private fun guardarBorrador() {
         val titulo = etTitulo.text.toString().trim()
         val contenido = etContenido.text.toString().trim()
 
-        if (titulo.isEmpty() && contenido.isEmpty() && imagenesSeleccionadas.isEmpty()) {
-            Toast.makeText(context, "No hay contenido para guardar", Toast.LENGTH_SHORT).show()
-            return
+        when {
+            titulo.isEmpty() -> {
+                Toast.makeText(context, "Agrega un título", Toast.LENGTH_SHORT).show()
+                return
+            }
+            contenido.isEmpty() -> {
+                Toast.makeText(context, "Agrega contenido", Toast.LENGTH_SHORT).show()
+                return
+            }
         }
 
         btnGuardarBorrador.isEnabled = false
@@ -316,25 +367,54 @@ class EditarBorradorFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                println("💾 DEBUG - Guardando borrador")
-                println("💾 DEBUG - borradorId: $borradorId")
-                println("💾 DEBUG - titulo: $titulo")
-                println("💾 DEBUG - contenido: $contenido")
+                println("💾 DEBUG - Actualizando borrador ID: $borradorId")
 
-                // TODO: Implementar llamada al API o base de datos local
-                // val response = RetrofitClient.borradorApi.actualizarBorrador(...)
+                // Convertir URIs a rutas persistentes usando la función del repository
+                val urisParaGuardar = imagenesSeleccionadas.map { uri ->
+                    // Si es una imagen nueva (no está en originales), copiarla
+                    val rutaUri = uri.path ?: ""
+                    if (!imagenesOriginales.contains(rutaUri.removePrefix("file://"))) {
+                        // Es una imagen nueva, copiarla al almacenamiento persistente
+                        copiarImagenAPersistente(uri)
+                    } else {
+                        // Ya existe, mantener la ruta original
+                        rutaUri.removePrefix("file://")
+                    }
+                }.filterNotNull()
+
+                // Convertir lista de rutas a JSON
+                val gson = Gson()
+                val imagenesJson = gson.toJson(urisParaGuardar)
+
+                val userData = sessionManager.getUserData()
+                val idUsuario = userData?.idUsuario ?: 0
+
+                // Actualizar borrador en la base de datos
+                val borradorActualizado = PublicacionLocal(
+                    id = borradorId,
+                    idUsuario = idUsuario,
+                    titulo = titulo,
+                    contenido = contenido,
+                    imagenesUris = imagenesJson,
+                    fechaCreacion = System.currentTimeMillis(),
+                    esBorrador = true,
+                    estadoSincronizacion = "borrador"
+                )
+
+                dao.actualizar(borradorActualizado)
 
                 Toast.makeText(
                     context,
-                    "Borrador guardado exitosamente",
+                    "✅ Borrador actualizado correctamente",
                     Toast.LENGTH_SHORT
                 ).show()
+
                 findNavController().navigateUp()
 
             } catch (e: Exception) {
                 Toast.makeText(
                     context,
-                    "Error al guardar: ${e.message}",
+                    "❌ Error al guardar: ${e.message}",
                     Toast.LENGTH_LONG
                 ).show()
                 e.printStackTrace()
@@ -345,6 +425,7 @@ class EditarBorradorFragment : Fragment() {
         }
     }
 
+    // ==================== PUBLICAR BORRADOR ====================
     private fun publicarBorrador() {
         val titulo = etTitulo.text.toString().trim()
         val contenido = etContenido.text.toString().trim()
@@ -360,13 +441,31 @@ class EditarBorradorFragment : Fragment() {
             }
         }
 
-        // Mostrar progreso
+        // Verificar conexión a internet
+        if (!NetworkUtils.isInternetAvailable(requireContext())) {
+            Toast.makeText(context, "Sin conexión a internet", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Confirmar publicación
+        AlertDialog.Builder(requireContext())
+            .setTitle("Publicar borrador")
+            .setMessage("¿Estás seguro de que deseas publicar este borrador? Se subirá al servidor y se eliminará de tus borradores locales.")
+            .setPositiveButton("Publicar") { _, _ ->
+                realizarPublicacion(titulo, contenido)
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun realizarPublicacion(titulo: String, contenido: String) {
         btnPublicar.isEnabled = false
         btnPublicar.text = "Publicando..."
 
         lifecycleScope.launch {
             try {
-                val userId = sessionManager.getUserId()
+                val userData = sessionManager.getUserData()
+                val userId = userData?.idUsuario ?: 0
 
                 println("🚀 DEBUG - Publicando borrador")
                 println("🚀 DEBUG - borradorId: $borradorId")
@@ -376,12 +475,11 @@ class EditarBorradorFragment : Fragment() {
                 println("🚀 DEBUG - imágenes: ${imagenesSeleccionadas.size}")
 
                 // Preparar datos
-                val idBorradorBody = borradorId.toRequestBody("text/plain".toMediaTypeOrNull())
                 val idUsuarioBody = userId.toString().toRequestBody("text/plain".toMediaTypeOrNull())
                 val tituloBody = titulo.toRequestBody("text/plain".toMediaTypeOrNull())
                 val descripcionBody = contenido.toRequestBody("text/plain".toMediaTypeOrNull())
 
-                // Preparar imágenes
+                // Preparar imágenes desde las rutas almacenadas
                 val imagenesParts = mutableListOf<MultipartBody.Part>()
                 for (uri in imagenesSeleccionadas) {
                     val file = uriToFile(uri)
@@ -392,20 +490,54 @@ class EditarBorradorFragment : Fragment() {
                     }
                 }
 
-                // TODO: Implementar llamada al API para publicar borrador
-                // val response = RetrofitClient.publicacionesApi.publicarBorrador(...)
+                println("🚀 DEBUG - Parts de imágenes creados: ${imagenesParts.size}")
 
-                Toast.makeText(
-                    context,
-                    "¡Borrador publicado exitosamente!",
-                    Toast.LENGTH_SHORT
-                ).show()
-                findNavController().navigateUp()
+                // Llamar al API para crear publicación
+                val response = RetrofitClient.publicacionesApi.crearPublicacion(
+                    idUsuario = idUsuarioBody,
+                    titulo = tituloBody,
+                    descripcion = descripcionBody,
+                    imagenes = imagenesParts
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val responseBody = response.body()!!
+
+                    if (responseBody.success) {
+                        // Eliminar borrador de la base de datos local
+                        dao.eliminarPorId(borradorId)
+
+                        // Eliminar imágenes físicas del borrador
+                        eliminarImagenesBorrador()
+
+                        Toast.makeText(
+                            context,
+                            "✅ Publicación creada exitosamente",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        findNavController().navigateUp()
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "❌ Error: ${responseBody.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    println("❌ Error response: $errorBody")
+                    Toast.makeText(
+                        context,
+                        "❌ Error al publicar: ${response.code()}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
 
             } catch (e: Exception) {
                 Toast.makeText(
                     context,
-                    "Error al publicar: ${e.message}",
+                    "❌ Error: ${e.message}",
                     Toast.LENGTH_LONG
                 ).show()
                 e.printStackTrace()
@@ -416,8 +548,47 @@ class EditarBorradorFragment : Fragment() {
         }
     }
 
+    // ==================== FUNCIONES AUXILIARES ====================
+
+    private fun copiarImagenAPersistente(uri: Uri): String? {
+        return try {
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
+
+            // Usar el mismo directorio que el repository
+            val directorioImagenes = File(requireContext().filesDir, "publicaciones_locales")
+            if (!directorioImagenes.exists()) {
+                directorioImagenes.mkdirs()
+            }
+
+            // Crear archivo con nombre único
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val archivoImagen = File(directorioImagenes, "img_${timeStamp}_${System.currentTimeMillis()}.jpg")
+
+            val outputStream = FileOutputStream(archivoImagen)
+            inputStream?.copyTo(outputStream)
+            inputStream?.close()
+            outputStream.close()
+
+            println("✅ Imagen guardada en: ${archivoImagen.absolutePath}")
+            archivoImagen.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     private fun uriToFile(uri: Uri): File? {
         return try {
+            // Si es un archivo local del borrador o de publicaciones_locales, usar directamente
+            val uriPath = uri.path
+            if (uriPath != null && (uriPath.contains("publicaciones_locales") || uriPath.contains("borradores"))) {
+                val file = File(uriPath.removePrefix("file://"))
+                if (file.exists()) {
+                    return file
+                }
+            }
+
+            // Si no, copiar a cache
             val inputStream = requireContext().contentResolver.openInputStream(uri)
             val tempFile = File.createTempFile("upload", ".jpg", requireContext().cacheDir)
             val outputStream = FileOutputStream(tempFile)
@@ -430,6 +601,20 @@ class EditarBorradorFragment : Fragment() {
         } catch (e: Exception) {
             e.printStackTrace()
             null
+        }
+    }
+
+    private fun eliminarImagenesBorrador() {
+        try {
+            for (rutaImagen in imagenesOriginales) {
+                val archivo = File(rutaImagen)
+                if (archivo.exists()) {
+                    archivo.delete()
+                    println("🗑️ Imagen eliminada: $rutaImagen")
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
